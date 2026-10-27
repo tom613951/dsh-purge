@@ -29,6 +29,24 @@
   <a href="README.md">English</a> | <a href="README.zh-CN.md">中文</a>
 </p>
 
+> [!NOTE]
+> **Custom Enhanced Fork of [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge)**
+>
+> **Key Enhancements in this Fork**:
+> - 🚀 **DSH NEXT Full Compatibility**: Native support for the new DeepSeek Harness desktop client (`DSH NEXT.exe` at `Programs\DSH NEXT`), including surface detection, ASAR unpacking/patching, and clean restart.
+> - 🛡️ **Prompt Sanitization & `{{cwd}}` Crash Guard**: Removed deprecated `{{cwd}}` prompt template variables to eliminate crashes on newer Harness versions.
+> - 📦 **Node.js Fallback Unzip Fix (PR #171 integrated)**: Handles explicit zip directory entries properly, eliminating `EEXIST` crashes during pure Node extraction.
+> - 🔗 **Skills Symlink Guard Fix (PR #173 integrated)**: Fixed missing `fs` import in `lib/skills.js`, restoring active symlink defense against accidental recursive skill deletion.
+> - 🔒 **Console Injection EPERM Resilience**: Added defensive exception handling for Windows protected directory writes.
+>
+> **Installation** (in `~/.dsh/profiles/desktop/package.json`):
+> ```json
+> "dependencies": {
+>   "dsh-purge": "https://codeload.github.com/tom613951/dsh-purge/tar.gz/refs/heads/master"
+> }
+> ```
+
+
 ## A note from the author
 
 People have been selling this open-source work in the open. After that, the author was asked to come in and talk. No need to spell out the rest. Read between the lines.

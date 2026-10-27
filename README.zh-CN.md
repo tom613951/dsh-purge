@@ -29,6 +29,24 @@
   <a href="README.md">English</a> | <a href="README.zh-CN.md">中文</a>
 </p>
 
+> [!NOTE]
+> **本仓库为 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 的定制增强维护版 (Fork)**
+>
+> **核心增强特性**：
+> - 🚀 **DSH NEXT 原生适配**：完整支持新版 DeepSeek Harness 桌面客户端（`DSH NEXT.exe`，默认安装于 `Programs\DSH NEXT`）的宿主探测、ASAR 自动化解包修补与进程平滑重启。
+> - 🛡️ **提示词安全脱水**：清除已弃用的 `{{cwd}}` 模板变量，彻底消除新版 Harness 对未注册变量抛错导致的整轮任务崩溃。
+> - 📦 **Node.js 兜底解压修复（集成 PR #171）**：显式目录条目递归建立目录而非空文件，彻底解决纯 Node 兜底解压时的 `EEXIST` 崩溃。
+> - 🔗 **Skills 软链守卫修复（集成 PR #173）**：补齐 `lib/skills.js` 缺失的 `fs` 导入，确保软链真实路径守卫在 ESM 下真实生效。
+> - 🔒 **控制台注入权限防护**：增加写入权限捕获，防止在 Windows 受保护目录下报 `EPERM` 导致启动中断。
+>
+> **安装方式**（在 `~/.dsh/profiles/desktop/package.json` 中配置）：
+> ```json
+> "dependencies": {
+>   "dsh-purge": "https://codeload.github.com/tom613951/dsh-purge/tar.gz/refs/heads/master"
+> }
+> ```
+
+
 ## 作者说几句
 
 市面上有人把这份开源明目张胆挂出去卖。后面作者这边被找去谈过话——经过不必写，你们自己品。
