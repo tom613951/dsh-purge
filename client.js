@@ -21,7 +21,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 					const port = String(location.port || "");
 					if (port === "43120") return "desktop";
 					const host = String(location.hostname || "");
-					if (host && host !== "127.0.0.1" && host !== "localhost" && /dsh desktop/i.test(String(location.href || ""))) return "desktop";
+					if (host && host !== "127.0.0.1" && host !== "localhost" && /dsh desktop|dsh next/i.test(String(location.href || ""))) return "desktop";
 				}
 			} catch { /* ignore */ }
 			return "";
