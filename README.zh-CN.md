@@ -30,16 +30,16 @@
 </p>
 
 > [!NOTE]
-> **本仓库为 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 的定制增强维护版 (Fork)**
+> **本仓库为 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 的定制维护版本 (Fork)**
 >
-> **核心增强特性**：
-> - 🚀 **DSH NEXT 原生适配**：完整支持新版 DeepSeek Harness 桌面客户端（`DSH NEXT.exe`，默认安装于 `Programs\DSH NEXT`）的宿主探测、ASAR 自动化解包修补与进程平滑重启。
-> - 🛡️ **提示词安全脱水**：清除已弃用的 `{{cwd}}` 模板变量，彻底消除新版 Harness 对未注册变量抛错导致的整轮任务崩溃。
-> - 📦 **Node.js 兜底解压修复（集成 PR #171）**：显式目录条目递归建立目录而非空文件，彻底解决纯 Node 兜底解压时的 `EEXIST` 崩溃。
-> - 🔗 **Skills 软链守卫修复（集成 PR #173）**：补齐 `lib/skills.js` 缺失的 `fs` 导入，确保软链真实路径守卫在 ESM 下真实生效。
-> - 🔒 **控制台注入权限防护**：增加写入权限捕获，防止在 Windows 受保护目录下报 `EPERM` 导致启动中断。
+> **工程特性与缺陷修复**：
+> - **DSH NEXT（anywhere-labs/dsh-desktop 社区桌面版）适配**：支持社区版客户端（`DSH NEXT.exe`，默认安装路径 `%LOCALAPPDATA%\Programs\DSH NEXT`）的宿主识别、ASAR 自动化解包与进程生命周期管理。
+> - **提示词模板脱水与异常防御**：移除未注册的 `{{cwd}}` 模板变量，避免新版 Harness 在模板装配阶段抛出未捕获异常导致对话会话中断。
+> - **纯 Node.js 解压兜底目录条目修复（PR #171）**：规范化处理以斜杠结尾的显式目录条目，建立真实目录而非空文件，消除子文件创建时触发的 `EEXIST` 异常。
+> - **Skills 模块软链真实路径守卫修复（PR #173）**：补齐 `lib/skills.js` 缺失的原生 `fs` 导入，确保软链解析防线正常生效，防止递归误删。
+> - **控制台注入权限防护**：对文件写入逻辑增加异常捕获，避免在权限受限的 Windows 目录下抛出 `EPERM` 异常导致初始化终止。
 >
-> **安装方式**（在 `~/.dsh/profiles/desktop/package.json` 中配置）：
+> **安装与依赖配置**（在 `~/.dsh/profiles/desktop/package.json` 中声明）：
 > ```json
 > "dependencies": {
 >   "dsh-purge": "https://codeload.github.com/tom613951/dsh-purge/tar.gz/refs/heads/master"

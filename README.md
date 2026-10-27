@@ -30,16 +30,16 @@
 </p>
 
 > [!NOTE]
-> **Custom Enhanced Fork of [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge)**
+> **Custom Maintenance Fork of [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge)**
 >
-> **Key Enhancements in this Fork**:
-> - 🚀 **DSH NEXT Full Compatibility**: Native support for the new DeepSeek Harness desktop client (`DSH NEXT.exe` at `Programs\DSH NEXT`), including surface detection, ASAR unpacking/patching, and clean restart.
-> - 🛡️ **Prompt Sanitization & `{{cwd}}` Crash Guard**: Removed deprecated `{{cwd}}` prompt template variables to eliminate crashes on newer Harness versions.
-> - 📦 **Node.js Fallback Unzip Fix (PR #171 integrated)**: Handles explicit zip directory entries properly, eliminating `EEXIST` crashes during pure Node extraction.
-> - 🔗 **Skills Symlink Guard Fix (PR #173 integrated)**: Fixed missing `fs` import in `lib/skills.js`, restoring active symlink defense against accidental recursive skill deletion.
-> - 🔒 **Console Injection EPERM Resilience**: Added defensive exception handling for Windows protected directory writes.
+> **Key Technical Enhancements & Bug Fixes**:
+> - **DSH NEXT (anywhere-labs/dsh-desktop Community Build) Compatibility**: Added runtime host detection, ASAR unpacking/patching, and process management for the community desktop client (`DSH NEXT.exe`, installed at `%LOCALAPPDATA%\Programs\DSH NEXT`).
+> - **Prompt Sanitization & Template Exception Guard**: Removed deprecated `{{cwd}}` interpolation variables to prevent runtime unhandled exceptions during prompt assembly on newer Harness versions.
+> - **Pure Node.js Fallback Unzip Directory Handling (PR #171)**: Explicit directory entries ending with slashes now create actual directories rather than zero-byte files, resolving `EEXIST` collision errors on subsequent file extraction.
+> - **Skills Module Symlink Guard Resolution (PR #173)**: Restored missing `node:fs` module import in `lib/skills.js`, allowing realpath resolution to execute without throwing ReferenceError.
+> - **Console Injection Permission Resilience**: Added defensive exception handling around filesystem operations to prevent process termination on Windows `EPERM` errors.
 >
-> **Installation** (in `~/.dsh/profiles/desktop/package.json`):
+> **Installation & Dependency Configuration** (in `~/.dsh/profiles/desktop/package.json`):
 > ```json
 > "dependencies": {
 >   "dsh-purge": "https://codeload.github.com/tom613951/dsh-purge/tar.gz/refs/heads/master"
