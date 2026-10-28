@@ -1,38 +1,36 @@
 # dsh-purge (Enhanced Maintenance Fork)
 
-A runtime protocol sanitization and unconstrained environment enhancement plugin for DeepSeek Harness, supporting official desktop builds, web profiles, and the DSH NEXT community desktop edition.
-
-[English](README.md) | [中文](README.zh-CN.md)
+DeepSeek Harness 协议层清洗与解除限制增强插件，支持官方桌面端、Web 端及 DSH NEXT 社区桌面版。
 
 ---
 
-## Overview
+## 项目说明
 
-This repository is a customized maintenance fork of [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge), focused on cross-platform host compatibility, runtime fault tolerance, and critical bug fixes.
+本仓库为 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 的定制维护版本，专注于跨平台宿主适配、运行时容错增强以及关键缺陷修复。
 
-### Key Enhancements & Bug Fixes
+### 核心特性与修复
 
-- **DSH NEXT Compatibility**: Native host detection, automated ASAR unpacking/patching, and clean lifecycle management for the [anywhere-labs/dsh-desktop](https://github.com/anywhere-labs/dsh-desktop) community build (`DSH NEXT.exe`, located at `%LOCALAPPDATA%\Programs\DSH NEXT`).
-- **Prompt Sanitization & Crash Guard**: Deprecated `{{cwd}}` template interpolation variables have been eliminated, preventing unhandled runtime exceptions during prompt assembly on newer Harness versions.
-- **Node.js Fallback Unzip Directory Handling (PR #171)**: Explicit directory entries ending with slashes now create actual directories rather than zero-byte files, resolving `EEXIST` collision errors during subsequent file extraction.
-- **Skills Module Symlink Guard Resolution (PR #173)**: Restored the missing `node:fs` module import in `lib/skills.js`, ensuring realpath resolution executes properly to protect source directories from accidental deletion.
-- **Console Injection Permission Resilience**: Added defensive exception handling around filesystem operations to prevent process termination on Windows `EPERM` errors.
+- **DSH NEXT 原生适配**：完整支持 [anywhere-labs/dsh-desktop](https://github.com/anywhere-labs/dsh-desktop) 社区桌面版（可执行文件 `DSH NEXT.exe`，安装路径 `%LOCALAPPDATA%\Programs\DSH NEXT`）的宿主识别、ASAR 自动化解包修补与进程生命周期管理。
+- **提示词模板安全脱水**：清除已弃用的 `{{cwd}}` 模板插值变量，消除新版 Harness 在模板装配阶段因未注册变量抛出未捕获异常导致对话会话中断的问题。
+- **Node.js 兜底解压目录条目修复（PR #171）**：规范化处理以斜杠结尾的显式目录条目，建立真实目录而非空文件，消除子文件创建时触发的 `EEXIST` 异常。
+- **Skills 模块软链真实路径守卫修复（PR #173）**：补齐 `lib/skills.js` 缺失的原生 `node:fs` 导入，恢复软链真实路径解析与源目录防误删机制。
+- **控制台注入权限防护**：增加写入权限异常捕获，避免在权限受限的 Windows 目录下抛出 `EPERM` 异常导致主进程启动终止。
 
 ---
 
-## Compatibility Matrix
+## 适配范围
 
-| Host Environment | Executable / Path Pattern | Support Status |
+| 宿主类型 | 可执行程序 / 路径特征 | 适配状态 |
 |:---|:---|:---:|
-| **DSH NEXT** (Community Build) | `DSH NEXT.exe` (`Programs\DSH NEXT`) | Native Support |
-| **DeepSeek Harness** (Official Desktop) | `DeepSeek Harness.exe` / `DSH Desktop.exe` | Full Support |
-| **DSH Web / CLI** | `@deepseek-ai/core` / `web` profile | Full Support |
+| **DSH NEXT**（社区桌面版） | `DSH NEXT.exe` (`Programs\DSH NEXT`) | 原生支持 |
+| **DeepSeek Harness**（官方桌面版） | `DeepSeek Harness.exe` / `DSH Desktop.exe` | 完整支持 |
+| **DSH Web / CLI** | `@deepseek-ai/core` / `web` profile | 完整支持 |
 
 ---
 
-## Installation & Configuration
+## 安装与配置
 
-Add this repository to your target profile's `package.json` (e.g. `~/.dsh/profiles/desktop/package.json`):
+在对应 profile 目录（例如 `~/.dsh/profiles/desktop/package.json`）的 `dependencies` 中添加：
 
 ```json
 {
@@ -42,7 +40,7 @@ Add this repository to your target profile's `package.json` (e.g. `~/.dsh/profil
 }
 ```
 
-Then run pnpm install inside the profile directory:
+随后在 profile 目录下执行安装：
 
 ```bash
 pnpm install
@@ -50,33 +48,35 @@ pnpm install
 
 ---
 
-## Usage
+## 常用指令
 
-### Chat Commands
+### 聊天对话指令
 
-| Command | Description |
+在会话输入框中直接输入：
+
+| 指令 | 说明 |
 |:---|:---|
-| `/purge` or `/dsh-purge` | Inspect current runtime status, host detection, and patch status |
-| `/purge apply` | Trigger ASAR unpacking and apply sanitization patches |
-| `/purge revert` | Restore host files to their unpatched state |
-| `/purge restart` | Gracefully restart the desktop client process |
+| `/purge` 或 `/dsh-purge` | 查看插件当前运行态、宿主环境与补丁生效情况 |
+| `/purge apply` | 触发 ASAR 解包并应用清洗规则 |
+| `/purge revert` | 还原宿主原始代码并撤销注入 |
+| `/purge restart` | 平滑重启宿主桌面客户端 |
 
-### Command Line Interface (CLI)
+### 命令行（CLI）
 
 ```bash
-# Check host status and patch rules
+# 查看宿主检测状态与规则详情
 dsh-purge --status
 
-# Apply patches offline
+# 离线应用补丁
 dsh-purge --apply
 
-# Revert patches
+# 撤销补丁还原
 dsh-purge --revert
 ```
 
 ---
 
-## License & Attribution
+## 许可证与致谢
 
-- Forked and maintained based on [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge).
-- Licensed under the [Apache-2.0 License](LICENSE).
+- 本项目基于 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 进行二开与维护。
+- 遵循 [Apache-2.0 License](LICENSE)。
