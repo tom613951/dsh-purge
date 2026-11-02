@@ -38,14 +38,12 @@ test("rollupPatchStatus: pattern 还在 → pattern_not_found（可以打）", (
   assert.equal(rollupPatchStatus({ ...base, notFound: 1 }), "pattern_not_found");
 });
 
-test("rollupPatchStatus: 有文件真的写成功就仍算 applied，不制造半打假告警", () => {
-  assert.equal(rollupPatchStatus({ ...base, applied: 1, drifted: 1 }), "applied");
+test("rollupPatchStatus: 漂移优先于 applied，避免多文件补丁半打假绿", () => {
+  assert.equal(rollupPatchStatus({ ...base, applied: 1, drifted: 1 }), "drifted");
 });
 
-test("rollupPatchStatus: 已经落盘过的补丁仍算 already，不因个别文件漂移翻红", () => {
-  // 多文件补丁里个别文件本来就不含这段代码（另一个构建产物），
-  // 这种"假漂移"不能盖掉已经打上的部分。
-  assert.equal(rollupPatchStatus({ ...base, already: 1, drifted: 1 }), "already");
+test("rollupPatchStatus: 漂移优先于 already，避免过期文件漏告警", () => {
+  assert.equal(rollupPatchStatus({ ...base, already: 1, drifted: 1 }), "drifted");
 });
 
 test("rollupPatchStatus: 写错误优先于 applied，不能把 EACCES 吞成绿", () => {

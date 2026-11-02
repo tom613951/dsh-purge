@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-98%20passed%2C%200%20failed-brightgreen.svg)]()
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-339933.svg)]()
-[![DSH Compatibility](https://img.shields.io/badge/DSH-0.2.0%20%7C%200.2.1--rc.2%20%7C%20DSH%20NEXT-blue.svg)]()
+[![DSH Compatibility](https://img.shields.io/badge/DSH-0.2.0%20%7C%200.2.1--rc.2~rc.5%20%7C%20DSH%20NEXT-blue.svg)]()
 [![Encoding](https://img.shields.io/badge/encoding-UTF--8%20(No%20BOM)-success.svg)]()
 
 DeepSeek Harness 协议层清洗、运行态加固与安全演练扩展插件。本仓库为面向官方桌面版、Web 版及社区版 DSH NEXT 的工程化维护分支。
@@ -15,7 +15,7 @@ DeepSeek Harness 协议层清洗、运行态加固与安全演练扩展插件。
 本维护分支基于上游 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 演进，旨在解决历史版本迭代中的资产断代、现代宿主运行时防护缺陷以及跨平台环境下的字符编码问题：
 
 1. **版本资产融合**：完整恢复 1.1.71 版本的 23 项实战攻防演练技能，并在现代插件架构中重构随包自动校验与分发机制。
-2. **宿主防护对齐**：完全合入 1.1.86 版本的运行态防护机制，包含 Web 服务端口安全回收（防 PID 复用误杀）、桌面端 ASAR 瞬态重命名备份互斥保护及深色主题界面适配。
+2. **宿主防护对齐**：完全合入 1.1.88 版本的运行态防护机制与 rc.2/rc.4/rc.5 多版本适配架构，包含 Web 服务端口安全回收（防 PID 复用误杀）、桌面端 ASAR 瞬态重命名备份互斥保护、原子写保护、审批白名单放行及深色主题界面适配。
 3. **字符编码基线**：全仓库严格遵循 UTF-8（无 BOM）标准，彻底清理历史记录中的 Mojibake 乱码与替换字符，原生兼容 Windows 系统的 UTF-8 全球语言支持环境。
 4. **包管理规范自愈**：针对 pnpm 11+ 环境自动修正 `allowBuilds` 配置格式，消除 URL 依赖导致的构建拦截，实现 postinstall 零干预执行。
 
@@ -59,7 +59,7 @@ DeepSeek Harness 协议层清洗、运行态加固与安全演练扩展插件。
 |:---|:---|:---:|
 | DSH NEXT（社区版） | `DSH NEXT.exe` (`%LOCALAPPDATA%\Programs\DSH NEXT`) | 原生支持：支持独立主进程识别、ASAR 自动化解包与补丁注入 |
 | DeepSeek Harness（官方桌面版） | `DeepSeek Harness.exe` / `DSH Desktop.exe` | 完整支持：识别官方打包环境，安全注入补丁 |
-| DeepSeek Harness Web | `@deepseek-ai/core` / `dsh web` | 完整支持：支持 EADDRINUSE 自动检测与端口释放机制 |
+| DeepSeek Harness Web | `@deepseek-ai/core` / `dsh web` | 完整支持：支持 0.2.1-rc.2 ~ rc.5 多版本自适应、EADDRINUSE 自动检测与端口释放机制 |
 
 ### 3. 运行态安全加固
 
