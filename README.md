@@ -1,5 +1,6 @@
 # dsh-purge (Enhanced Maintenance Fork)
 
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)]()
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-120%20passed%2C%200%20failed-brightgreen.svg)]()
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-339933.svg)]()
@@ -12,12 +13,13 @@ DeepSeek Harness 协议层清洗、运行态加固与安全演练扩展插件。
 
 ## 项目背景与定位
 
-本维护分支基于上游 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 演进，旨在解决历史版本迭代中的资产断代、现代宿主运行时防护缺陷以及跨平台环境下的字符编码问题：
+本维护分支基于上游 [YuJunZhiXue/dsh-purge](https://github.com/YuJunZhiXue/dsh-purge) 演进，旨在解决历史版本迭代中的资产断代、现代宿主运行时防护缺陷、多轮对话拒答惯性以及跨平台环境下的字符编码问题：
 
 1. **版本资产融合**：完整恢复 1.1.71 版本的 23 项实战攻防演练技能，并在现代插件架构中重构随包自动校验与分发机制。
 2. **宿主防护对齐**：完全合入 1.1.90 版本的运行态防护机制与 rc.2/rc.4/rc.5 多版本适配架构，包含 Web 服务端口安全回收（防 PID 复用误杀）、桌面端 ASAR 瞬态重命名备份互斥保护、真实工作目录提示恢复、撤销挂载脱离 composer 防卸载崩溃及深色主题界面适配。
-3. **字符编码基线**：全仓库严格遵循 UTF-8（无 BOM）标准，彻底清理历史记录中的 Mojibake 乱码与替换字符，原生兼容 Windows 系统的 UTF-8 全球语言支持环境。
-4. **包管理规范自愈**：针对 pnpm 11+ 环境自动修正 `allowBuilds` 配置格式，消除 URL 依赖导致的构建拦截，实现 postinstall 零干预执行。
+3. **生成层深度加固**：集成首尾双管注入布局、破甲尾部强化段 (Boost)、拒答首包流式拦截重试、多轮历史拒答惯性清洗 (Refusal Scrubbing)、破甲探针闭环系统 (Probe Canary)、预设按需隔离以及补丁本地重锚覆盖 (Reanchor)。
+4. **字符编码基线**：全仓库严格遵循纯 UTF-8（无 BOM）标准，彻底清理历史记录中的 Mojibake 乱码与替换字符，原生兼容 Windows 系统的 UTF-8 全球语言支持环境。
+5. **包管理规范自愈**：针对 pnpm 11+ 环境自动修正 `allowBuilds` 配置格式，消除 URL 依赖导致的构建拦截，实现 postinstall 零干预执行。
 
 ---
 
@@ -61,9 +63,17 @@ DeepSeek Harness 协议层清洗、运行态加固与安全演练扩展插件。
 | DeepSeek Harness（官方桌面版） | `DeepSeek Harness.exe` / `DSH Desktop.exe` | 完整支持：识别官方打包环境，安全注入补丁 |
 | DeepSeek Harness Web | `@deepseek-ai/core` / `dsh web` | 完整支持：支持 0.2.1-rc.2 ~ rc.5 多版本自适应、EADDRINUSE 自动检测与端口释放机制 |
 
-### 4. 深度对抗、实证闭环与架构自愈 (生成层破甲与工程闭环)
+### 3. 运行态安全加固
 
-针对长对话注意力衰减、模型惯性拒答与宿主代码版本漂移，插件引入全套运行时加固方案：
+- **端口安全释放**：Web 服务启动前执行端口状态检测，结合系统网络状态表（`netstat` / `lsof`）校对目标进程标识，杜绝在未核验命令行特征时终止外部无关进程；提供端口释放等待与重试机制。
+- **ASAR 解包原子互斥**：桌面端 ASAR 备份采用瞬态重命名策略，引入跨进程文件锁，避免多实例并发启动或写入冲突导致宿主资源损坏。
+- **真实工作目录恢复**：针对 DSH 0.2.1 运行时未正确向提示词引擎注册 `{{cwd}}` 变量导致的解析失败问题，运行时自动探测当前会话真实工作区物理路径并注入提示词，保留路径感知能力。
+- **撤销挂载脱离 Composer**：将撤销按钮与状态钩子从会话 Composer 子树移出至顶层容器，彻底解决在桌面端切换后台或最小化恢复后输入框异常隐藏的缺陷。
+- **高对比度深色模式**：遵循 WCAG 2.1 AA 可访问性对比度规范，重构深色主题下操作按钮与步骤序号的高亮样式。
+
+### 4. 深度对抗、实证闭环与架构自愈
+
+针对长对话注意力衰减、模型惯性拒答与宿主代码版本漂移，插件引入全套生成层加固与自愈管道：
 
 1. **首尾双管注入与尾部强化 (Boost Section)**：
    - 支持 `head`（头部）、`tail`（尾部）及 `both`（首尾双管）注入布局。
@@ -85,21 +95,11 @@ DeepSeek Harness 协议层清洗、运行态加固与安全演练扩展插件。
 
 ---
 
-### 3. 运行态安全加固
-
-- **端口安全释放**：Web 服务启动前执行端口状态检测，结合系统网络状态表（`netstat` / `lsof`）校对目标进程标识，杜绝在未核验命令行特征时终止外部无关进程；提供端口释放等待与重试机制。
-- **ASAR 瞬态原子备份**：修补前将 `app.asar` 备份为 `app.asar.dshpurge.bak`，写入异常时自动触发回滚流程，避免因文件并发抢占造成宿主程序损坏。
-- **界面高对比度适配**：修复暗色主题下主操作按钮的反白不可读问题，调整报表节点样式，保证不同显示模式下的视觉层级一致。
-- **模板解析异常熔断**：在提示词拼接阶段剔除未注册的 `{{cwd}}` 占位符，防御因模板变量未定义引发的主进程未捕获异常。
-- **构建配置自愈机制**：动态修正 `pnpm-workspace.yaml` 中的 `allowBuilds` 字段，剔除 URL 依赖键并收敛至裸包名规范，保障自动化依赖安装流程正常完成。
-
----
-
 ## 安装与配置
 
 ### 1. 桌面端集成 (DeepSeek Harness / DSH NEXT)
 
-在目标 Profile 配置文件（如 `~/.dsh/profiles/desktop/package.json`）的 `dependencies` 字段中声明：
+在目标 Profile 配置文件（如 `~/.dsh/profiles/desktop/package.json`）中声明依赖：
 
 ```json
 {
@@ -133,9 +133,18 @@ dsh plugin --profile web add https://codeload.github.com/tom613951/dsh-purge/tar
 
 | 指令 | 作用与执行语义 |
 |:---|:---|
-| `/purge` 或 `/dsh-purge` | 查询当前运行环境信息、宿主类型及 71 条清洗规则就绪状态 |
+| `/purge` 或 `/dsh-purge` | 查询当前运行环境信息、宿主类型、补丁就绪状态与运行时微调配置 |
 | `/purge apply` | 执行宿主环境 ASAR 自动化解包、补丁写入与规则加载 |
 | `/purge revert` | 撤销所有注入规则，从备份文件完整还原原始宿主程序 |
+| `/purge boost [on\|off]` | 开关尾部破甲强化段（Boost Section，默认开启） |
+| `/purge position [head\|tail\|both]` | 切换系统提示词注入布局（默认 `head`） |
+| `/purge retry [on\|off]` | 开关模型拒答首包流式拦截与静默重试（默认开启） |
+| `/purge scrub [on\|off]` | 开关多轮历史拒答惯性清洗（Refusal Scrubbing，默认开启） |
+| `/purge probe [new\|clear\|status]` | 管理破甲探针（生成带 30 分钟 TTL 的 Nonce 闭环验证注入） |
+| `/purge exclude <preset-id>` | 将指定预设加入排除名单（不注入破甲提示词） |
+| `/purge include <preset-id>` | 将指定预设移出排除名单（恢复提示词注入） |
+| `/purge reanchor [list\|clear <id>]` | 管理本地重锚补丁覆盖规则 |
+| `/purge edit` | 调用系统编辑器编辑提示词注入文件 `prompt-inject.md` |
 | `/purge restart` | 安全终止当前宿主进程并平滑拉起新实例 |
 
 ### 命令行接口 (CLI)
@@ -144,10 +153,10 @@ dsh plugin --profile web add https://codeload.github.com/tom613951/dsh-purge/tar
 # 查询当前宿主环境状态与规则应用情况
 dsh-purge --status
 
-# 离线执行规则应用
+# 离线执行规则应用与宿主加固
 dsh-purge --apply
 
-# 离线还原宿主文件
+# 离线还原宿主文件至原始状态
 dsh-purge --revert
 
 # 开关破甲尾部强化段 (Boost)
@@ -156,7 +165,7 @@ dsh-purge --boost <on|off>
 # 切换注入布局 (head | tail | both)
 dsh-purge --inject-position <head|tail|both>
 
-# 开关模型拒答流式拦截重试
+# 开关模型拒答流式拦截与重试
 dsh-purge --refusal-retry <on|off>
 
 # 开关多轮历史拒答惯性清洗
@@ -165,7 +174,7 @@ dsh-purge --refusal-scrubbing <on|off>
 # 破甲探针闭环检测 (验证注入是否触达模型)
 dsh-purge --probe [new|clear|status]
 
-# 预设隔离管理
+# 预设细粒度按需隔离
 dsh-purge --exclude-preset <id>
 dsh-purge --include-preset <id>
 
@@ -201,13 +210,14 @@ node --check lib/probe.js
 node --check lib/refusal-scrubbing.js
 node --check lib/anchors.js
 node --check lib/preset-injection.js
+node --check bin/dsh-purge.js
 node --check client.js
 ```
 
 测试基线指标：
-- 单元测试：120 项用例全量通过（覆盖随包技能校验、UTF-8 字符合法性、ASAR 锁保护、端口监听解析、自愈配置重写、首尾双管注入与拒答流式重试等）（覆盖随包技能校验、UTF-8 字符合法性、ASAR 锁保护、端口监听解析、自愈配置重写等）。
+- 单元测试：**120 项用例全量通过**（覆盖随包技能校验、UTF-8 字符合法性、ASAR 锁保护、端口监听解析、自愈配置重写、首尾双管注入、拒答流式重试、历史拒答清洗、破甲探针闭环、本地重锚覆盖与预设隔离等）。
 - 静态解析：全量代码通过 AST 语法解析，零语法错误，零警告。
-- 字符编码：全量文本文件严格采用 UTF-8（无 BOM），无任何损坏字符或双重编码乱码。
+- 字符编码：全量文本文件严格采用纯 UTF-8（无 BOM），无任何损坏字符或双重编码乱码。
 
 ---
 

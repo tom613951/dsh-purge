@@ -1,7 +1,7 @@
 {
   "name": "dsh-purge",
-  "version": "1.1.90",
-  "description": "DeepSeek Harness 破甲：让所有模型都能破甲，不同模型可换不同提示词；默认提示词面向国模「小码酱」。Jailbreak for every model — swap prompts per model. 求 Star 收藏 ⭐ 如要二开，请查看署名要求部分",
+  "version": "1.2.0",
+  "description": "DeepSeek Harness 协议层清洗、运行态加固与安全演练扩展插件。支持多模型提示词调度、首尾加固注入、拒答流式重试与实战攻防技能库。",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -57,11 +57,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YuJunZhiXue/dsh-purge.git"
+    "url": "git+https://github.com/tom613951/dsh-purge.git"
   },
-  "homepage": "https://github.com/YuJunZhiXue/dsh-purge#readme",
+  "homepage": "https://github.com/tom613951/dsh-purge#readme",
   "bugs": {
-    "url": "https://github.com/YuJunZhiXue/dsh-purge/issues"
+    "url": "https://github.com/tom613951/dsh-purge/issues"
   },
   "dsh": {
     "bundle": {
@@ -80,9 +80,9 @@
     },
     "install": {
       "preferred": "tarball",
-      "tarball": "https://codeload.github.com/YuJunZhiXue/dsh-purge/tar.gz/refs/heads/master",
-      "zip": "https://codeload.github.com/YuJunZhiXue/dsh-purge/zip/refs/heads/master",
-      "git": "https://github.com/YuJunZhiXue/dsh-purge.git"
+      "tarball": "https://codeload.github.com/tom613951/dsh-purge/tar.gz/refs/heads/master",
+      "zip": "https://codeload.github.com/tom613951/dsh-purge/zip/refs/heads/master",
+      "git": "https://github.com/tom613951/dsh-purge.git"
     }
   },
   "publishConfig": {
