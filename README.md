@@ -1,7 +1,7 @@
 # dsh-purge (Enhanced Maintenance Fork)
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-98%20passed%2C%200%20failed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-111%20passed%2C%200%20failed-brightgreen.svg)]()
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-339933.svg)]()
 [![DSH Compatibility](https://img.shields.io/badge/DSH-0.2.0%20%7C%200.2.1--rc.2~rc.5%20%7C%20DSH%20NEXT-blue.svg)]()
 [![Encoding](https://img.shields.io/badge/encoding-UTF--8%20(No%20BOM)-success.svg)]()
@@ -60,6 +60,19 @@ DeepSeek Harness 协议层清洗、运行态加固与安全演练扩展插件。
 | DSH NEXT（社区版） | `DSH NEXT.exe` (`%LOCALAPPDATA%\Programs\DSH NEXT`) | 原生支持：支持独立主进程识别、ASAR 自动化解包与补丁注入 |
 | DeepSeek Harness（官方桌面版） | `DeepSeek Harness.exe` / `DSH Desktop.exe` | 完整支持：识别官方打包环境，安全注入补丁 |
 | DeepSeek Harness Web | `@deepseek-ai/core` / `dsh web` | 完整支持：支持 0.2.1-rc.2 ~ rc.5 多版本自适应、EADDRINUSE 自动检测与端口释放机制 |
+
+### 4. 深度对抗与流式拦截 (生成层破甲)
+
+针对长对话注意力衰减与模型偶发拒答，插件引入生成层动态干预管道：
+
+1. **首尾注入与尾部强化 (Boost Section)**：
+   - 支持 `head`（头部）、`tail`（尾部）及 `both`（首尾双管）注入布局。
+   - 挂载 `<dsh_boost>` 尾部强化段（排序默认 -50000），确立「拒绝即故障」、授权终结问询、抗谄媚与多轮重申等高阶约束，抵抗长对话对齐漂移。
+2. **拒答流式拦截与静默加固重试 (Refusal Retry)**：
+   - 挂载宿主 `llm/stream` 管道，在模型返回首包字符（前 400 字符）进行特征分析。
+   - 命中回避或拒答特征词时，主动阻断当前输出流，并在系统指令末尾追加加固指引静默重试一次，输出直接交付的技术方案。
+
+---
 
 ### 3. 运行态安全加固
 
@@ -125,6 +138,15 @@ dsh-purge --apply
 
 # 离线还原宿主文件
 dsh-purge --revert
+
+# 开关破甲尾部强化段 (Boost)
+dsh-purge --boost <on|off>
+
+# 切换注入布局 (head | tail | both)
+dsh-purge --inject-position <head|tail|both>
+
+# 开关模型拒答流式拦截重试
+dsh-purge --refusal-retry <on|off>
 ```
 
 ---
@@ -146,11 +168,16 @@ node --check lib/desktop.js
 node --check lib/host.js
 node --check lib/rewind.js
 node --check lib/skills.js
+node --check lib/boost.js
+node --check lib/tuning.js
+node --check lib/refusal-retry.js
+node --check lib/stream-observation.js
+node --check lib/audit.js
 node --check client.js
 ```
 
 测试基线指标：
-- 单元测试：98 项用例全量通过（覆盖随包技能校验、UTF-8 字符合法性、ASAR 锁保护、端口监听解析、自愈配置重写等）。
+- 单元测试：111 项用例全量通过（覆盖随包技能校验、UTF-8 字符合法性、ASAR 锁保护、端口监听解析、自愈配置重写、首尾双管注入与拒答流式重试等）（覆盖随包技能校验、UTF-8 字符合法性、ASAR 锁保护、端口监听解析、自愈配置重写等）。
 - 静态解析：全量代码通过 AST 语法解析，零语法错误，零警告。
 - 字符编码：全量文本文件严格采用 UTF-8（无 BOM），无任何损坏字符或双重编码乱码。
 

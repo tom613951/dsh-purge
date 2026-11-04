@@ -3,6 +3,7 @@
 import * as core from "../lib/core.js";
 import * as rules from "../lib/rules.js";
 import * as reapply from "../lib/reapply.js";
+import { readTuning, writeTuning, TUNING_DEFAULTS } from "../lib/tuning.js";
 
 const args = process.argv.slice(2);
 
@@ -24,6 +25,11 @@ function printStatus(state) {
   out.push(`  备份 / backup  ${state.has_backup ? "有 / yes" : "无 / no"}`);
   out.push(`  注入文件       ${state.override_path}`);
   out.push(`  注入状态       ${state.override_status}`);
+  let tuning = { ...TUNING_DEFAULTS };
+  try { tuning = readTuning(state.dsh_home); } catch { /* ignore */ }
+  out.push(`  强化段 / boost       ${tuning.boost ? "开启 / on" : "关闭 / off"}`);
+  out.push(`  注入位置 / position   ${tuning.injectPosition}`);
+  out.push(`  拒答拦截 / retry      ${tuning.refusalRetry ? "开启 / on" : "关闭 / off"}`);
   out.push("");
   out.push(`  补丁 ${state.patches_applied}/${core.ALL_PATCHES.length} 已清洗, ${state.patches_pending} 待清洗`
     + (state.patches_drifted ? `, ${state.patches_drifted} 漂移（官方原文已改，需更新 pattern）` : ""));
@@ -44,6 +50,41 @@ function printStatus(state) {
 async function main() {
   const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--edit", "--help"].includes(a));
 
+  const boostIdx = args.indexOf("--boost");
+  if (boostIdx >= 0) {
+    const home = core.findDshHome();
+    const val = (args[boostIdx + 1] || "").toLowerCase();
+    const current = readTuning(home).boost;
+    const next = val === "on" ? true : val === "off" ? false : !current;
+    writeTuning({ boost: next }, home);
+    console.log(`破甲尾部强化段 (Boost): ${next ? "已开启" : "已关闭"}`);
+    return;
+  }
+
+  const posIdx = args.findIndex((a) => a === "--inject-position" || a === "--position");
+  if (posIdx >= 0) {
+    const pos = (args[posIdx + 1] || "").toLowerCase();
+    if (!["head", "tail", "both"].includes(pos)) {
+      console.log("[ERROR] 注入位置需指定为: head | tail | both");
+      process.exit(1);
+    }
+    const home = core.findDshHome();
+    writeTuning({ injectPosition: pos }, home);
+    console.log(`注入位置已设置为: ${pos}`);
+    return;
+  }
+
+  const retryIdx = args.findIndex((a) => a === "--refusal-retry" || a === "--retry");
+  if (retryIdx >= 0) {
+    const home = core.findDshHome();
+    const val = (args[retryIdx + 1] || "").toLowerCase();
+    const current = readTuning(home).refusalRetry;
+    const next = val === "on" ? true : val === "off" ? false : !current;
+    writeTuning({ refusalRetry: next }, home);
+    console.log(`拒答拦截重试 (Refusal Retry): ${next ? "已开启" : "已关闭"}`);
+    return;
+  }
+
   if (mode === "--help" || args.includes("-h")) {
     console.log(`dsh-purge 用法:
   dsh-purge --status     显示状态
@@ -51,6 +92,9 @@ async function main() {
   dsh-purge --revert     回滚还原
   dsh-purge --uninstall  卸载插件（已应用则先还原）
   dsh-purge --edit       编辑注入文件 prompt-inject.md
+  dsh-purge --boost <on|off>              开关尾部破甲强化段 (默认 on)
+  dsh-purge --inject-position <pos>      注入位置 (head|tail|both, 默认 head)
+  dsh-purge --refusal-retry <on|off>      开关模型拒答流式拦截与重试 (默认 on)
   dsh-purge --help       帮助`);
     return;
   }
