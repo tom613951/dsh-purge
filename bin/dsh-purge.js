@@ -4,6 +4,8 @@ import * as core from "../lib/core.js";
 import * as rules from "../lib/rules.js";
 import * as reapply from "../lib/reapply.js";
 import { readTuning, writeTuning, TUNING_DEFAULTS } from "../lib/tuning.js";
+import { createProbe, readProbe, clearProbe, probeMessage } from "../lib/probe.js";
+import { readOverrides, clearOverride } from "../lib/anchors.js";
 
 const args = process.argv.slice(2);
 
@@ -30,6 +32,17 @@ function printStatus(state) {
   out.push(`  强化段 / boost       ${tuning.boost ? "开启 / on" : "关闭 / off"}`);
   out.push(`  注入位置 / position   ${tuning.injectPosition}`);
   out.push(`  拒答拦截 / retry      ${tuning.refusalRetry ? "开启 / on" : "关闭 / off"}`);
+  out.push(`  多轮清洗 / scrubbing  ${tuning.refusalScrubbing !== false ? "开启 / on" : "关闭 / off"}`);
+  const probe = readProbe(state.dsh_home);
+  out.push(`  破甲探针 / probe      ${probe ? `存活 [${probe.nonce}] (剩余 ${Math.round(probe.remainingMs / 60000)}m)` : "未激活 / inactive"}`);
+  if (tuning.excludePresets?.length) {
+    out.push(`  排除预设 / excluded   ${tuning.excludePresets.join(", ")}`);
+  }
+  const overrides = readOverrides(state.dsh_home);
+  const overrideCount = Object.keys(overrides).length;
+  if (overrideCount) {
+    out.push(`  重锚覆盖 / reanchors  ${overrideCount} 项本地覆盖生效`);
+  }
   out.push("");
   out.push(`  补丁 ${state.patches_applied}/${core.ALL_PATCHES.length} 已清洗, ${state.patches_pending} 待清洗`
     + (state.patches_drifted ? `, ${state.patches_drifted} 漂移（官方原文已改，需更新 pattern）` : ""));
@@ -49,6 +62,101 @@ function printStatus(state) {
 
 async function main() {
   const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--edit", "--help"].includes(a));
+
+  const probeIdx = args.indexOf("--probe");
+  if (probeIdx >= 0) {
+    const home = core.findDshHome();
+    const action = (args[probeIdx + 1] || "status").toLowerCase();
+    if (action === "new" || action === "create") {
+      const p = createProbe(home);
+      console.log(`破甲探针已创建 (有效期 30 分钟): [${p.nonce}]\n\n${p.message}`);
+      return;
+    }
+    if (action === "clear") {
+      clearProbe(home);
+      console.log("已清除当前破甲探针。");
+      return;
+    }
+    const p = readProbe(home);
+    if (!p) {
+      console.log("当前无活跃探针。使用 dsh-purge --probe new 创建探针。");
+    } else {
+      console.log(`活跃探针: [${p.nonce}] (剩余 ${Math.round(p.remainingMs / 60000)} 分钟)\n\n${probeMessage(p.nonce)}`);
+    }
+    return;
+  }
+
+  const scrubIdx = args.findIndex((a) => a === "--refusal-scrubbing" || a === "--scrub");
+  if (scrubIdx >= 0) {
+    const home = core.findDshHome();
+    const val = (args[scrubIdx + 1] || "").toLowerCase();
+    const current = readTuning(home).refusalScrubbing !== false;
+    const next = val === "on" ? true : val === "off" ? false : !current;
+    writeTuning({ refusalScrubbing: next }, home);
+    console.log(`多轮历史拒答惯性清洗 (Refusal Scrubbing): ${next ? "已开启" : "已关闭"}`);
+    return;
+  }
+
+  const excludeIdx = args.indexOf("--exclude-preset");
+  if (excludeIdx >= 0) {
+    const presetId = (args[excludeIdx + 1] || "").trim().toLowerCase();
+    if (!presetId) {
+      console.log("[ERROR] 用法: dsh-purge --exclude-preset <preset-id>");
+      process.exit(1);
+    }
+    const home = core.findDshHome();
+    const cur = readTuning(home).excludePresets || [];
+    if (!cur.includes(presetId)) {
+      writeTuning({ excludePresets: [...cur, presetId] }, home);
+    }
+    console.log(`预设 ${presetId} 已加入排除名单 (不注入破甲提示词)`);
+    return;
+  }
+
+  const includeIdx = args.indexOf("--include-preset");
+  if (includeIdx >= 0) {
+    const presetId = (args[includeIdx + 1] || "").trim().toLowerCase();
+    if (!presetId) {
+      console.log("[ERROR] 用法: dsh-purge --include-preset <preset-id>");
+      process.exit(1);
+    }
+    const home = core.findDshHome();
+    const cur = readTuning(home).excludePresets || [];
+    writeTuning({ excludePresets: cur.filter((x) => x !== presetId) }, home);
+    console.log(`预设 ${presetId} 已移出排除名单 (恢复正常注入)`);
+    return;
+  }
+
+  const reanchorIdx = args.indexOf("--reanchor");
+  if (reanchorIdx >= 0) {
+    const home = core.findDshHome();
+    const sub = (args[reanchorIdx + 1] || "list").toLowerCase();
+    if (sub === "list") {
+      const ov = readOverrides(home);
+      const keys = Object.keys(ov);
+      if (!keys.length) {
+        console.log("当前无本地重锚覆盖。");
+      } else {
+        console.log("本地重锚覆盖:");
+        for (const [pid, items] of Object.entries(ov)) {
+          for (const [idx, item] of Object.entries(items)) {
+            console.log(`  [补丁 #${pid} 索引 ${idx}] 片段: ${item.pattern?.slice(0, 40)}... (时间: ${item.at})`);
+          }
+        }
+      }
+      return;
+    }
+    if (sub === "clear") {
+      const patchId = args[reanchorIdx + 2];
+      if (!patchId) {
+        console.log("[ERROR] 用法: dsh-purge --reanchor clear <patch-id> [index]");
+        process.exit(1);
+      }
+      clearOverride(home, patchId, args[reanchorIdx + 3]);
+      console.log(`已清除补丁 #${patchId} 的重锚覆盖`);
+      return;
+    }
+  }
 
   const boostIdx = args.indexOf("--boost");
   if (boostIdx >= 0) {
