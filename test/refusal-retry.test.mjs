@@ -84,3 +84,22 @@ test("streamWithRefusalRetry 对正常输出直通不重试", async () => {
   const fullText = chunks.map((c) => c.text || "").join("");
   assert.equal(fullText, "直接交付：系统已就绪。");
 });
+
+test("streamWithRefusalRetry 对异常/空 factory 安全兜底", async () => {
+  const emptyFactory = () => null;
+  const chunks = [];
+  for await (const chunk of streamWithRefusalRetry(emptyFactory, {})) {
+    chunks.push(chunk);
+  }
+  assert.equal(chunks.length, 0);
+});
+
+test("withNudge 在无 system 提示词时自动插入", () => {
+  const options = {
+    messages: [{ role: "user", content: "hello" }],
+  };
+  const nudged = withNudge(options, "\n\nNUDGE_TEST");
+  assert.equal(nudged.messages[0].role, "system");
+  assert.equal(nudged.messages[0].content, "NUDGE_TEST");
+  assert.equal(nudged.messages[1].content, "hello");
+});
