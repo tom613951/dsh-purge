@@ -1,6 +1,6 @@
 {
   "name": "dsh-purge",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "DeepSeek Harness 协议层清洗、运行态加固与安全演练扩展插件。支持多模型提示词调度、首尾加固注入、拒答流式重试与实战攻防技能库。",
   "type": "module",
   "main": "lib/index.js",
@@ -98,6 +98,7 @@
   "dshTargets": [
     "0.2.1-rc.2",
     "0.2.1-rc.4",
-    "0.2.1-rc.5"
+    "0.2.1-rc.5",
+    "0.2.2-rc.1"
   ]
 }

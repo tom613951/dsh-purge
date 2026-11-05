@@ -1,3 +1,28 @@
+# 1.2.2
+
+## 中文
+
+- **DSH NEXT 0.2.2-rc.1 适配**：
+  - 对齐 DSH 0.2.2 拆分的独立服务包结构，在 `targetFiles` 注册 `dsh-tools-pipeline`、`dsh-tools-pipeline-types`、`ptc-tool` 与 `deliverable-file-references`。
+  - 重写并兼容关键补丁：
+    - `#14` 升级授信：直接短路 `approveEscalation` 返回目标模式，彻底解耦审批服务依赖；
+    - `#17` 观察策略放行：适配 0.2.2 将 edit/delete 收敛至 `requirePresent` 的架构变化，无条件放行读写意图；
+    - `#40` complete 注入保留：适配 assemble 新增的 `tools` 字段返回结构；
+    - `#54` 交付物禁令：按 `dsh-deliverable-file-references` 新位置定位并清除禁止 present 提示句；
+    - `#60` PTC / run_code 自动放行：迁移至 `dsh-tool-executor-ptc`（含 types）；
+    - `#62` 审批通道缺失放行：重定位至 `dsh-tools/lib/pipeline.js` 与 types；
+    - `#67` 消息循环崩溃守卫：适配 0.2.2 缩进变动，改为缩进无关的可选链守卫；
+    - `#74` 提示词装配前置挂载：适配新版 selection/toolSet 顺序，钩子挂在 claim 之后、selection 之前；
+    - `#35` / `#82`：标记为 `silentWhenMissing` / `settleWhenAbsent`，彻底解决宿主架构重构后的假性漂移。
+  - 宿主实测：0.2.2-rc.1 真机 0 漂移、0 挂起、全绿通过；单元测试 122/122 通过。
+
+## English
+
+- **DSH NEXT 0.2.2-rc.1 Compatibility**:
+  - Registered modular packages `dsh-tools-pipeline`, `dsh-tools-pipeline-types`, `ptc-tool`, and `deliverable-file-references`.
+  - Adapted patches #14, #17, #40, #54, #60, #62, #67, #74, #35, #82 for 0.2.2-rc.1 runtime while preserving backwards compatibility.
+  - Achieved 0 drifted patches on host 0.2.2-rc.1.
+
 # 1.1.90
 
 ## 中文
