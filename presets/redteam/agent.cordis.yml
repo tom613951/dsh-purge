@@ -84,7 +84,7 @@
 
       ## 子智能体回报的核对（不核对就等于没做）
       - 子智能体说"拿到了"，必须先记为 `claimed`，你**亲自核实后**才能升级为 `observed`：
-        - 核实手段：对 webshell/隧道用 `curl` 实测连接；对凭据用 `redteam_credentials` + 浏览器实测登录；对漏洞用 `redteam_vulns` 查库 + 要求子智能体贴原始请求；对隧道用 `redteam_sessions` 看 `entry_kind` 是否真实跨边界。
+        - 核实手段：对 webshell/隧道用 `curl` 实测连接；对凭据用 `redteam_credential_list` + 浏览器实测登录；对漏洞用 `redteam_vuln_query` 查库 + 要求子智能体贴原始请求；对隧道用 `redteam_sessions` 看 `entry_kind` 是否真实跨边界。
         - 工具：`redteam_evidence_verify` 核对子智能体回报与库中记录是否一致（hash 级核对）。
         - `redteam_evidence_list` 里 `confidence=claimed|inferred` 的条目**禁止**直接说"已拿到"，必须说"已上报，待核实"。`redteam_unverified_count` 返回 >0 时，汇报必须提醒"还有 N 条未核实"。
       - 升级用 `redteam_evidence_upgrade`（传 claimed_ev_id + verified_result），升级后的 observed 自动链接回原 claimed，审计链不断。
@@ -186,10 +186,11 @@
 # `tool-skill` gives them the catalog and loader; the merged catalog also
 # carries whatever the deployment registered globally (repository plugins).
 #
-# 技能库以 DSH 原生技能为准：技能文件放在 $DSH_HOME/skills（user-dsh 根，rank 400）
-# 或项目根的 .dsh/skills、.agents/skills，由 skill-filesystem 自动发现，原生
-# `skill` 工具与 /skill 命令直接可用。红队不再维护私有技能目录——历史技能已
-# 迁入 $DSH_HOME/skills，技能库页面只做浏览。
+# 技能库以 DSH 原生技能为准：只扫两个技能根 —— $DSH_HOME/skills（用户技能，排前面）
+# 和 $DSH_HOME/redteam/skills（插件启动时从包内 skills/redteam 同步的随包技能），
+# 由 skill-filesystem 自动发现；原生 `skill` 工具与 /skill 命令直接可用。
+# 控制台「技能库」页签展示这两个库并标注可用性；注意 includeDefaultRoots=false，
+# .dsh/skills、.agents/skills 等默认根不会扫。
 - id: skill-filesystem
   name: '@deepseek-ai/dsh-skill-filesystem'
   # 随包技能在 $DSH_HOME/redteam/skills，由插件启动时从包内同步。
@@ -298,10 +299,6 @@
       name: '@deepseek-ai/dsh-tool-subagent-control'
       disabled: false
 
-    - id: tool-subagent-list-agents
-      name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
-      disabled: false
-
     - id: tool-subagent
       name: '@deepseek-ai/dsh-tool-subagent'
       disabled: false
@@ -314,7 +311,7 @@
         # 靠提示词劝"不要再往下委派"是软的——模型完全可以无视。这里直接把委派工具从子会话的
         # 工具目录里摘掉，子智能体连看都看不到 subagent / subagent_fork / workflow / ralph。
         # maxDepth 同时收成 1 作为二道保险（默认 3 层太深，会白吃并发预算与上下文）。
-        maxDepth: 1
+        maxDepth: 3
         # 0.2.1-rc.2 已废弃 toolFilter（#138）：写在这里会让整份红队预设注册失败，模式下拉里选不中。
         # 子智能体靠 maxDepth: 1 收成叶子，不再用 deny 名单。
 
