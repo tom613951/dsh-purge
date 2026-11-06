@@ -358,3 +358,26 @@ test("`[]` 替换后幂等：再 ensure 一次零写入", () => {
   assert.equal(second.wrote, false);
   assert.equal(fs.readFileSync(fp, "utf8"), healed);
 });
+
+
+test("#209 pnpm 12+ 保留合法 URL 源键，仍丢弃截断键和版本键", () => {
+  const dir = withTempProfile();
+  const pnpmPkgDir = path.join(dir, "node_modules", "pnpm");
+  fs.mkdirSync(pnpmPkgDir, { recursive: true });
+  fs.writeFileSync(path.join(pnpmPkgDir, "package.json"), JSON.stringify({ name: "pnpm", version: "12.0.0" }), "utf8");
+  const raw = [
+    "allowBuilds:",
+    `  "dsh-purge@git+${MASTER_URL}": true`,
+    `  "dsh-purge@${COMMIT_URL}": true`,
+    "  dsh-purge@https: true",
+    "  dsh-purge@1.1.81: true",
+    "",
+  ].join("\n");
+  const next = rewritePnpmAllowBuilds(raw, dir);
+  const keys = next.split("\n").filter((line) => parseAllowBuildLine(line)).map((line) => parseAllowBuildLine(line).key);
+  assert.deepEqual(keys, [
+    `dsh-purge@git+${MASTER_URL}`,
+    `dsh-purge@${COMMIT_URL}`,
+    "dsh-purge",
+  ]);
+});

@@ -174,8 +174,8 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"theme.ink": "墨",
 			"purge.title": "补丁",
 			"override.title": "提示词",
-			"own.title": "本地靶场",
-			"own.hint": "开源版攻击任务只放行本机/内网 IP。域名会先解析，解析到的每一个地址都必须是私网或回环；hosts 把 .lab 指到公网 IP 也会拦。解析失败或混有公网地址一律拦截。",
+			"own.title": "目标放行名单",
+			"own.hint": "默认所有目标全部放行（无地域、域名、公网/内网或类别拦截）。下方名单仅作为附加备注注入提示词。",
 			"own.save": "保存名单",
 			"saved.own": "已保存自己的服务器",
 			"saved.own.dropped": "已保存。有 {n} 行不是单个 IP 或主机名，已丢掉",
@@ -535,8 +535,8 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"theme.ink": "Ink",
 			"purge.title": "Patches",
 			"override.title": "Prompt",
-			"own.title": "Local lab only",
-			"own.hint": "The open-source build only allows localhost/private IPs. Domains are resolved first; every A/AAAA must be loopback or RFC1918. A hosts entry that points .lab at a public IP is blocked. Failed or mixed public answers are denied.",
+			"own.title": "Target allowlist",
+			"own.hint": "All targets are allowed unconditionally by default (no region, domain, public/private IP, or category gates). Entries below are appended to the prompt as operator notes.",
 			"own.save": "Save list",
 			"saved.own": "Own servers saved",
 			"saved.own.dropped": "Saved. {n} lines were not a single IP or hostname and were dropped",
@@ -3065,7 +3065,7 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 .dshp-rewind:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,currentColor)}
 .dshp-rewind:disabled{opacity:.4;cursor:default}
 .dshp-rewind svg{display:block}
-.dshp-rewind-menu{position:fixed;z-index:2147483000;box-sizing:border-box;min-width:220px;padding:4px;border:0;border-radius:12px;background:var(--dsw-specific-menu,#fff);color:var(--dsw-alias-label-primary,#1a1a1a);--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent,0 8px 24px rgba(0,0,0,.16));transform:translateY(-100%)}
+.dshp-rewind-menu{position:fixed;z-index:950;box-sizing:border-box;min-width:220px;padding:4px;border:0;border-radius:12px;background:var(--dsw-specific-menu,#fff);color:var(--dsw-alias-label-primary,#1a1a1a);--dsw-elevation-stroke-color:var(--dsw-alias-border-l1);box-shadow:var(--dsw-elevation-prominent,0 8px 24px rgba(0,0,0,.16));transform:translateY(-100%)}
 body[data-ds-dark-theme] .dshp-rewind-menu{background:var(--dsw-specific-menu,#32312d);color:var(--dsw-alias-label-primary,#e6e2db);--dsw-elevation-stroke-color:var(--dsw-alias-border-l1,#3f3d38);box-shadow:var(--dsw-elevation-prominent,0 10px 28px rgba(0,0,0,.45))}
 .dshp-rewind-item{display:flex;flex-direction:column;gap:2px;width:100%;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:inherit;text-align:left;cursor:pointer;font:12px/1.3 var(--ds-font-sans,system-ui,sans-serif)}
 .dshp-rewind-item:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
@@ -9145,10 +9145,22 @@ body[data-ds-dark-theme] .rt-scope-testing,.dshp-dock[data-theme="dusk"] .rt-sco
 			return best;
 		}
 
+		function rewindSurfaceObscured(anchor) {
+			if (typeof document === "undefined") return true;
+			if (!anchor || !anchor.isConnected || anchor.hidden) return true;
+			if (typeof anchor.getClientRects === "function" && anchor.getClientRects().length === 0) return true;
+			const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"], dialog[open]');
+			for (let i = 0; i < dialogs.length; i += 1) {
+				const d = dialogs[i];
+				if (!d.hidden && d.getClientRects && d.getClientRects().length > 0) return true;
+			}
+			return false;
+		}
+
 		function placeRewindHost(host, anchor, reserve) {
 			if (!host || !anchor) return;
 			const rect = anchor.getBoundingClientRect();
-			if (!(rect.width > 0) || anchor.hidden) {
+			if (!(rect.width > 0) || rewindSurfaceObscured(anchor)) {
 				host.style.display = "none";
 				return;
 			}
@@ -9177,7 +9189,8 @@ body[data-ds-dark-theme] .rt-scope-testing,.dshp-dock[data-theme="dusk"] .rt-sco
 					el.setAttribute(REWIND_HOST_ATTR, "");
 					document.body.appendChild(el);
 				}
-				el.style.cssText = "position:fixed;z-index:2147482500;display:none;left:0;top:0;";
+				// 900：压过聊天区，低于宿主的设置/插件中心等全屏弹层（一般 ≥1000）和插件自己的浮窗（10050）。
+				el.style.cssText = "position:fixed;z-index:900;display:none;left:0;top:0;";
 				setHost(el);
 				let padded = null;
 				let warned = false;
@@ -9205,11 +9218,13 @@ body[data-ds-dark-theme] .rt-scope-testing,.dshp-dock[data-theme="dusk"] .rt-sco
 						}
 						return;
 					}
+					const obscured = rewindSurfaceObscured(anchor);
 					// 按钮标签会随失败提示变长，预留宽度跟着实测宽度走，避免压到模型选择器。
 					const reserve = Math.max(REWIND_RESERVE_PX, (el.offsetWidth || 60) + 12);
-					const pad = sessionRef.current ? reserve + "px" : (anchor.dataset.dshpPad || "");
+					const show = Boolean(sessionRef.current && !obscured);
+					const pad = show ? reserve + "px" : (anchor.dataset.dshpPad || "");
 					if (anchor.style.paddingLeft !== pad) anchor.style.paddingLeft = pad;
-					if (!sessionRef.current) {
+					if (!show) {
 						el.style.display = "none";
 						return;
 					}
