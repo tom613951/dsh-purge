@@ -23,10 +23,10 @@ jobs:
 
       - name: Syntax-check plugin entry
         run: |
-          node --check bin/dsh-purge.js
-          node --check lib/index.js
-          node --check lib/core.js
-          node --check lib/reapply.js
+          for f in bin/*.js client.js lib/*.js lib/*.mjs lib/patches/*.js lib/redteam/*.js lib/redteam/*.mjs; do
+            [ -e "$f" ] || continue
+            node --check "$f"
+          done
           node --input-type=module -e "import './lib/index.js'"
 
       - name: Run tests
@@ -43,19 +43,14 @@ jobs:
             echo "already published: $tag"
             exit 0
           fi
-          first="$(head -n 1 release-notes.md | tr -d '\r')"
-          if [ "$first" != "# ${version}" ]; then
-            echo "release-notes.md 第一行必须是 # ${version}，现在是: ${first}"
-            exit 1
-          fi
           zip="dsh-purge-${version}.zip"
           if git rev-parse -q --verify "refs/tags/${tag}^{}" >/dev/null; then
             commit="$(git rev-parse "refs/tags/${tag}^{}")"
             git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" "$commit"
-            gh release create "$tag" --title "$tag" --notes-file release-notes.md
+            gh release create "$tag" --title "$tag" --notes "$tag"
           else
             git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" HEAD
-            args=(release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes-file release-notes.md)
+            args=(release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes "$tag")
             case "$version" in
               *beta*|*alpha*|*rc*) args+=(--prerelease) ;;
             esac
