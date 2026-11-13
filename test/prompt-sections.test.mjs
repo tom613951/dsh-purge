@@ -87,3 +87,25 @@ test("boost=false 时不注册 dsh-purge-boost", () => {
     assert.equal(byName["dsh-purge-boost"], undefined, "关闭 boost 后不应挂载");
   });
 });
+
+test("registerPromptSections 回调随 writeTuning 实时响应 boost 与 injectPosition", () => {
+  withTempHome((home) => {
+    writeTuning({ boost: true, injectPosition: "both" }, home);
+    const h = createHarness();
+    registerPromptSections(h.ctx, h.config);
+    const byName = Object.fromEntries(h.sections.map((s) => [s.name, s]));
+    assert.equal(byName["dsh-purge-boost"].text({}), BOOST_TEXT);
+    assert.ok(byName["dsh-purge"].text({}).length > 0);
+    assert.ok(byName["dsh-purge-tail"].text({}).length > 0);
+
+    writeTuning({ boost: false, injectPosition: "tail" }, home);
+    assert.equal(byName["dsh-purge-boost"].text({}), "");
+    assert.equal(byName["dsh-purge"].text({}), "");
+    assert.ok(byName["dsh-purge-tail"].text({}).length > 0);
+
+    writeTuning({ boost: true, injectPosition: "head" }, home);
+    assert.equal(byName["dsh-purge-boost"].text({}), BOOST_TEXT);
+    assert.ok(byName["dsh-purge"].text({}).length > 0);
+    assert.equal(byName["dsh-purge-tail"].text({}), "");
+  });
+});

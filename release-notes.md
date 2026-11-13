@@ -1,3 +1,34 @@
+# 1.2.6
+
+## 中文
+
+- **DSH `0.2.2-rc.2` 兼容与预设能力探测**：
+  - 在 `lib/core.js` 为补丁 `#13`（`ESCALATION_WIDENING_EXEMPT`）、`#18`（`REPEAT_TOOL_REMINDER_DISABLED`）、`#35`（`ESCALATION_NEVER_REJECT`）与 `#62`（`OFFICIAL_TOOL_ASK_FAILOPEN` 全部 4 个变体）追加 `0.2.2-rc.2` 兼容匹配，同时完整保留 `0.2.2-rc.1` 模式。
+  - 新增 `lib/preset-compat.js`（导出 `adaptListAgents`、`ensureToolExecutor`、`profileOwnsPreset`、`migratePresetDefinition`、`backupPresetMigration`、`registerPresetDefinitions`、`withLegacyChildIds`）、`lib/path-boundary.js` 与 `lib/remove-tree.js`，并在 `lib/redteam/index.js` 与 `presets/redteam/agent.cordis.yml` 接入预设能力探测与迁移，将 `modelSelectionSettings` 迁移为 `modelSelection` 并将 `maxDepth` 收敛为 `1`。
+  - `package.json` 版本升级至 `1.2.6`，标注 `dshTarget: "0.2.2-rc.2"` 与 `dshTargets: ["0.2.2-rc.2", "0.2.2-rc.1"]`。
+- **Zip 与 ASAR 解压安全加固**：
+  - `lib/zip-extract.js` 全面收口为纯 Node 严格校验解压与路径边界检查（拒绝路径穿越、Windows 保留名、符号链接、重复条目、多 EOCD 歧义、Zip64、`maxEntries` / `maxBytes` 超限及 CRC 校验失败）。
+  - `lib/extract-asar.js` 与 `lib/core.js` 加固 ASAR 暂存提取与原子恢复（`verifyStagedAsar`、`.dshpurge-recover.json` 临时文件原子写回、`keepStage` 保护及 Windows 占用锁恢复提示）。
+- **上下文冗余治理与 Web UI 运行时微调**：
+  - `lib/identity.js` 新增 `isSafetyOnlySection`，在工具能力与工程规范守卫下自动剥离宿主纯安全/合规冗余段。
+  - `lib/tuning.js` 与 `lib/anchor.js` 新增 `safetyFilter`（`boolean`）与 `anchorMode`（`full` / `compact` / `off`）及 `COMPACT_ANCHOR_TEXT`。
+  - `lib/index.js` 接入 `/dsh-purge/tuning`（`GET` / `POST`）接口及 `/purge safety [on|off]`、`/purge anchor [full|compact|off]` 斜杠子命令。
+  - `client.js` 新增 Web UI「运行与上下文微调」控制面板，并加固 `restartDsh` 提示归一化与 `restartPending` 状态守卫。
+- **测试验证**：单元测试运行 153 项：152 项通过、0 项失败、1 项依赖外部官方 ASAR 环境变量（`DSH_QA_RC1_ASAR` / `DSH_QA_RC2_ASAR`）的联合用例跳过。
+
+## English
+
+- **DSH `0.2.2-rc.2` Compatibility & Preset Capability Probing**:
+  - Added additive `0.2.2-rc.2` patterns for patches `#13` (`ESCALATION_WIDENING_EXEMPT`), `#18` (`REPEAT_TOOL_REMINDER_DISABLED`), `#35` (`ESCALATION_NEVER_REJECT`), and all 4 variants of `#62` (`OFFICIAL_TOOL_ASK_FAILOPEN`) in `lib/core.js` while retaining `0.2.2-rc.1` support.
+  - Added `lib/preset-compat.js`, `lib/path-boundary.js`, and `lib/remove-tree.js`; wired capability probing and preset migration into `lib/redteam/index.js` and `presets/redteam/agent.cordis.yml` (`modelSelection: true`, `maxDepth: 1`).
+  - Updated `package.json` to `1.2.6` with `dshTarget: "0.2.2-rc.2"` and `dshTargets: ["0.2.2-rc.2", "0.2.2-rc.1"]`.
+- **Safe Zip & ASAR Extraction Hardening**:
+  - Replaced external unzip fallbacks in `lib/zip-extract.js` with a strict Node-only reader plus `./path-boundary.js` boundary checks (blocking traversal, Windows reserved names, symlinks, duplicate entries, ambiguous EOCD, Zip64, `maxEntries`/`maxBytes` violations, and CRC mismatches).
+  - Hardened staged ASAR extraction and atomic recovery in `lib/extract-asar.js` and `lib/core.js` (`verifyStagedAsar`, atomic temp `.dshpurge-recover.json` replacement, `keepStage` preservation, and Windows lock recovery hints).
+- **Context-Bloat Control & Web UI Runtime Tuning**:
+  - Added `isSafetyOnlySection` in `lib/identity.js` (guarded by `CAPABILITY_MARKERS`, `ENGINEERING_HINT`, and `IMPERATIVE_HINT`), `safetyFilter` & `anchorMode` (`full`/`compact`/`off`) in `lib/tuning.js` and `lib/anchor.js`, `/dsh-purge/tuning` (`GET`/`POST`) + `/purge safety` & `/purge anchor` in `lib/index.js`, and a native Runtime & Context Tuning panel plus hardened restart status handling in `client.js`.
+- **Test Baseline**: `npm test` executed 153 tests: 152 passed, 0 failed, 1 skipped (env-gated external official ASAR fixture).
+
 # 1.2.2
 
 ## 中文

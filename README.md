@@ -1,10 +1,10 @@
 # dsh-purge (Enhanced Maintenance Fork)
 
-[![Version](https://img.shields.io/badge/version-1.2.5-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-1.2.6-blue.svg)]()
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-120%20passed%2C%200%20failed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-152%20passed%20%7C%200%20failed-brightgreen.svg)]()
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-339933.svg)]()
-[![DSH Compatibility](https://img.shields.io/badge/DSH-0.2.0%20%7C%200.2.1--rc.2~rc.5%20%7C%20DSH%20NEXT-blue.svg)]()
+[![DSH Compatibility](https://img.shields.io/badge/DSH-0.2.0%20%7C%200.2.1%20%7C%200.2.2--rc.1~rc.2-blue.svg)]()
 [![Encoding](https://img.shields.io/badge/encoding-UTF--8%20(No%20BOM)-success.svg)]()
 
 DeepSeek Harness 协议层清洗、运行态加固与安全演练扩展插件。本仓库为面向官方桌面版、Web 版及社区版 DSH NEXT 的工程化维护分支。
@@ -215,7 +215,7 @@ node --check client.js
 ```
 
 测试基线指标：
-- 单元测试：**120 项用例全量通过**（覆盖随包技能校验、UTF-8 字符合法性、ASAR 锁保护、端口监听解析、自愈配置重写、首尾双管注入、拒答流式重试、历史拒答清洗、破甲探针闭环、本地重锚覆盖与预设隔离等）。
+- 单元测试：**153 项测试：152 项通过、0 项失败、1 项环境变量条件跳过**（覆盖随包技能校验、UTF-8 字符合法性、Zip/ASAR 解压与 Windows 锁恢复保护、端口监听解析、自愈配置重写、首尾双管注入与尾锚压缩、纯安全段剥离、拒答流式重试、历史拒答清洗、预设能力探测与微调配置验证等；另有 1 项需设置官方 ASAR 归档路径环境变量的联合用例在未提供外部文件时自动跳过）。
 - 静态解析：全量代码通过 AST 语法解析，零语法错误，零警告。
 - 字符编码：全量文本文件严格采用纯 UTF-8（无 BOM），无任何损坏字符或双重编码乱码。
 

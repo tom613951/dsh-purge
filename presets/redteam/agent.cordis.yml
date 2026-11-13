@@ -305,13 +305,11 @@
       config:
         provider: spawn
         toolName: subagent
-        modelSelectionSettings: true
+        modelSelection: true
         backgroundMode: continuable
         # 子智能体是角色执行者（信息收集/资产梳理/漏洞发现/漏洞利用/内网渗透），**必须是叶子节点**：
-        # 靠提示词劝"不要再往下委派"是软的——模型完全可以无视。这里直接把委派工具从子会话的
-        # 工具目录里摘掉，子智能体连看都看不到 subagent / subagent_fork / workflow / ralph。
-        # maxDepth 同时收成 1 作为二道保险（默认 3 层太深，会白吃并发预算与上下文）。
-        maxDepth: 3
+        # maxDepth 收成 1 兜底，避免子会话继续往下委派并白吃并发预算与上下文。
+        maxDepth: 1
         # 0.2.1-rc.2 已废弃 toolFilter（#138）：写在这里会让整份红队预设注册失败，模式下拉里选不中。
         # 子智能体靠 maxDepth: 1 收成叶子，不再用 deny 名单。
 

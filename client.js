@@ -473,6 +473,21 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"continue.ready": "继续（还可 {left} 次）",
 			"continue.limit": "已达继续上限",
 			"continue.fail": "继续失败: {error}",
+			"tuning.title": "运行与上下文微调",
+			"tuning.hint": "修改后立即对下一轮生效，无需重启宿主。",
+			"tuning.safetyFilter": "自动剥离纯安全段",
+			"tuning.boost": "尾部强化段",
+			"tuning.refusalRetry": "拒答拦截重试",
+			"tuning.refusalScrubbing": "多轮历史拒答清洗",
+			"tuning.anchorMode": "尾锚模式",
+			"tuning.anchor.full": "完整 (full)",
+			"tuning.anchor.compact": "精简 (compact)",
+			"tuning.anchor.off": "关闭 (off)",
+			"tuning.injectPosition": "注入位置",
+			"tuning.pos.head": "头部 (head)",
+			"tuning.pos.tail": "尾部 (tail)",
+			"tuning.pos.both": "头尾双注 (both)",
+			"saved.tuning": "微调设置已保存",
 		};
 
 		const en = {
@@ -823,6 +838,21 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"continue.ready": "Continue ({left} left)",
 			"continue.limit": "Continue limit reached",
 			"continue.fail": "Continue failed: {error}",
+			"tuning.title": "Runtime & Context Tuning",
+			"tuning.hint": "Changes take effect on the next turn without restarting.",
+			"tuning.safetyFilter": "Strip safety-only sections",
+			"tuning.boost": "Tail boost section",
+			"tuning.refusalRetry": "Refusal intercept retry",
+			"tuning.refusalScrubbing": "Multi-turn refusal scrubbing",
+			"tuning.anchorMode": "Anchor mode",
+			"tuning.anchor.full": "Full",
+			"tuning.anchor.compact": "Compact",
+			"tuning.anchor.off": "Off",
+			"tuning.injectPosition": "Inject position",
+			"tuning.pos.head": "Head",
+			"tuning.pos.tail": "Tail",
+			"tuning.pos.both": "Both",
+			"saved.tuning": "Tuning saved",
 		};
 
 		const PURGE_CSS = `
@@ -905,6 +935,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 .dshp-cr-row label{display:inline-flex;align-items:center;gap:6px;color:var(--dshp-ink)}
 .dshp-cr-num{width:64px;min-width:64px;height:28px;padding:0 8px}
 .dshp-cr-text{width:120px;min-width:88px;height:28px;padding:0 8px}
+.dshp-cr-sel{width:auto;min-width:128px;height:28px;padding:0 8px}
 .dshp-ver{width:100%;min-width:0;max-width:none;height:32px;padding:0 10px;font-size:12px}
 .dshp-rel{margin:0 0 12px}
 .dshp-now{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:0 0 4px}
@@ -1179,9 +1210,24 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 			return "bad";
 		}
 
+		function normalizeNoticeText(text) {
+			if (text == null) return "";
+			if (typeof text === "string") return text;
+			if (text instanceof Error) return text.message || String(text);
+			if (typeof text === "object") {
+				if (typeof text.text === "string") return text.text;
+				if (typeof text.message === "string") return text.message;
+				if (typeof text.error === "string") return text.error;
+				try { return JSON.stringify(text); } catch { return String(text); }
+			}
+			return String(text);
+		}
+
 		function noticeNode(notice) {
-			if (!notice || notice.kind === "idle" || !notice.text) return null;
-			return h("span", { className: "dshp-notice " + (notice.kind === "error" ? "is-bad" : "is-ok") }, notice.text);
+			if (!notice || notice.kind === "idle") return null;
+			const text = normalizeNoticeText(notice.text ?? notice);
+			if (!text) return null;
+			return h("span", { className: "dshp-notice " + (notice.kind === "error" ? "is-bad" : "is-ok") }, text);
 		}
 
 		function Btn(props) {
@@ -1416,6 +1462,121 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 			);
 		}
 
+		function TuningSection({ onSaved }) {
+			const t = useT();
+			const [cfg, setCfg] = useState(null);
+			const [notice, setNotice] = useState({ kind: "idle", text: "" });
+			const [busy, setBusy] = useState(false);
+
+			useEffect(() => {
+				apiJson("/dsh-purge/tuning")
+					.then((d) => { if (d && d.ok && d.tuning) setCfg(d.tuning); })
+					.catch(() => {});
+			}, []);
+
+			const save = (patch) => {
+				if (!cfg || busy) return;
+				const prev = cfg;
+				setCfg(Object.assign({}, cfg, patch));
+				setBusy(true);
+				apiJson("/dsh-purge/tuning", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify(patch),
+				})
+					.then((d) => {
+						if (d && d.ok && d.tuning) {
+							setCfg(d.tuning);
+							setNotice({ kind: "ok", text: t("saved.tuning") });
+							if (typeof onSaved === "function") onSaved();
+						} else {
+							setCfg(prev);
+							setNotice({ kind: "error", text: t("err.save", { error: (d && d.error) || "" }) });
+						}
+					})
+					.catch((e) => {
+						setCfg(prev);
+						setNotice({ kind: "error", text: t("err.save", { error: e.message }) });
+					})
+					.finally(() => setBusy(false));
+			};
+
+			if (!cfg) return null;
+			return h("div", { className: "dshp-cr", style: { marginTop: 12 } },
+				h("div", { className: "dshp-sub" },
+					h("h4", null, t("tuning.title")),
+					noticeNode(notice),
+				),
+				h("p", { className: "dshp-hint", style: { margin: "0 0 6px", color: "var(--dshp-mute)", fontSize: 12 } }, t("tuning.hint")),
+				h("div", { className: "dshp-cr-row" },
+					h("label", null,
+						h("input", {
+							type: "checkbox",
+							checked: cfg.safetyFilter !== false,
+							disabled: busy,
+							onChange: (e) => save({ safetyFilter: e.target.checked }),
+						}),
+						t("tuning.safetyFilter"),
+					),
+					h("label", null,
+						h("input", {
+							type: "checkbox",
+							checked: cfg.boost !== false,
+							disabled: busy,
+							onChange: (e) => save({ boost: e.target.checked }),
+						}),
+						t("tuning.boost"),
+					),
+					h("label", null,
+						h("input", {
+							type: "checkbox",
+							checked: cfg.refusalRetry !== false,
+							disabled: busy,
+							onChange: (e) => save({ refusalRetry: e.target.checked }),
+						}),
+						t("tuning.refusalRetry"),
+					),
+					h("label", null,
+						h("input", {
+							type: "checkbox",
+							checked: cfg.refusalScrubbing !== false,
+							disabled: busy,
+							onChange: (e) => save({ refusalScrubbing: e.target.checked }),
+						}),
+						t("tuning.refusalScrubbing"),
+					),
+				),
+				h("div", { className: "dshp-cr-row" },
+					h("label", null,
+						t("tuning.anchorMode"),
+						h("select", {
+							className: "dshp-field dshp-cr-sel",
+							value: cfg.anchorMode || "full",
+							disabled: busy,
+							onChange: (e) => save({ anchorMode: e.target.value }),
+						},
+							h("option", { value: "full" }, t("tuning.anchor.full")),
+							h("option", { value: "compact" }, t("tuning.anchor.compact")),
+							h("option", { value: "off" }, t("tuning.anchor.off")),
+						),
+					),
+					h("label", null,
+						t("tuning.injectPosition"),
+						h("select", {
+							className: "dshp-field dshp-cr-sel",
+							value: cfg.injectPosition || "head",
+							disabled: busy,
+							onChange: (e) => save({ injectPosition: e.target.value }),
+						},
+							h("option", { value: "head" }, t("tuning.pos.head")),
+							h("option", { value: "tail" }, t("tuning.pos.tail")),
+							h("option", { value: "both" }, t("tuning.pos.both")),
+						),
+					),
+				),
+			);
+		}
+
 		function ContinueRetrySection() {
 			const t = useT();
 			const [cfg, setCfg] = useState(null);
@@ -1562,6 +1723,7 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 			const [updateJob, setUpdateJob] = useState(null);
 			const [askRestart, setAskRestart] = useState(false);
 			const suppressRestartAsk = useRef(false);
+			const restartPending = useRef(false);
 			const [askUninstall, setAskUninstall] = useState(false);
 			const [uninstallBusy, setUninstallBusy] = useState(false);
 			const [notice, setNotice] = useState({ kind: "idle", text: "" });
@@ -1728,16 +1890,19 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 				apiJson("/dsh-purge/status")
 					.then((d) => {
 						if (d && d.ok) {
+							restartPending.current = false;
 							setState(d);
 							if (d.channel) setChannel(d.channel);
 							if (d.update && d.update.ok && !d.update.error) setUpdateInfo(d.update);
 							if (d.boot_full_quit && !suppressRestartAsk.current) setAskRestart(true);
 						} else {
+							if (restartPending.current) return;
 							setState({ ok: false, patches_total: 0, patches_applied: 0, patch_status: {}, shim_cmd: "n/a", shim_ps1: "n/a", shim_bin: "n/a", has_backup: false });
 							setNotice({ kind: "error", text: tr("err.status", { error: (d && d.error) || "bad response" }) });
 						}
 					})
 					.catch((e) => {
+						if (restartPending.current) return;
 						setState({ ok: false, patches_total: 0, patches_applied: 0, patch_status: {}, shim_cmd: "n/a", shim_ps1: "n/a", shim_bin: "n/a", has_backup: false });
 						setNotice({ kind: "error", text: tr("err.status", { error: e.message }) });
 					});
@@ -2173,6 +2338,7 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 				h("div", { className: "dshp-bar", "aria-hidden": "true" }, h("i", { style: { transform: "scaleX(" + (pct / 100) + ")" } })),
 				h(PatchGroups, { state: s }),
 				h(HooksDenySection, { onSaved: loadAll }),
+				h(TuningSection, { onSaved: loadAll }),
 				h("div", { className: "dshp-row", style: { marginTop: 12 } },
 					h(Btn, { kind: "primary", disabled: patchBusy || uninstallBusy || !overrideLoaded, onClick: () => doAction("apply", "action.apply") }, patchBusy ? t("btn.apply.busy") : t("btn.apply")),
 					h(Btn, { kind: "danger", disabled: patchBusy || uninstallBusy, onClick: () => doAction("revert", "action.revert") }, t("btn.revert")),
@@ -2208,8 +2374,9 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 					},
 					onRestart: () => {
 						suppressRestartAsk.current = true;
+						restartPending.current = true;
 						setAskRestart(false);
-						restartDsh(setNotice, function () {}, t, hostSurface);
+						restartDsh(setNotice, function (busy) { if (!busy) restartPending.current = false; }, t, hostSurface);
 					},
 				}) : null,
 				// h(ContinueRetrySection, null),
@@ -2929,14 +3096,22 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 
 		function restartDsh(setNotice, setBusy, t, surface) {
 			if (restartOnce) return;
+			const safeSetNotice = (next) => {
+				if (typeof setNotice !== "function") return;
+				if (next && typeof next === "object") {
+					setNotice(Object.assign({}, next, { text: normalizeNoticeText(next.text) }));
+					return;
+				}
+				setNotice({ kind: "ok", text: normalizeNoticeText(next) });
+			};
 			const surf = surface || clientGuessSurface() || "desktop";
 			const desktop = surf === "desktop" || clientGuessSurface() === "desktop";
 			restartOnce = true;
 			setBusy(true);
-			setNotice({ kind: "ok", text: hostText(t, "restarting", surf) });
+			safeSetNotice({ kind: "ok", text: hostText(t, "restarting", surf) });
 			const stop = (error) => {
 				restartOnce = false;
-				setNotice({ kind: "error", text: error ? t("restart.fail", { error }) : t("restart.notStarted") });
+				safeSetNotice({ kind: "error", text: error ? t("restart.fail", { error: normalizeNoticeText(error) }) : t("restart.notStarted") });
 				setBusy(false);
 			};
 			let sawDrop = false;
@@ -2951,7 +3126,7 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 					const next = (d && d.surface) || surf;
 					const full = next === "desktop" || (d && d.fullApp) || desktop;
 					if (full && d.already) {
-						setNotice({ kind: "ok", text: hostText(t, "restarting", next) });
+						safeSetNotice({ kind: "ok", text: hostText(t, "restarting", next) });
 						return;
 					}
 					if (full && d.restarting === false) {
@@ -2959,11 +3134,11 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 						stop(d.error || "not started");
 						return;
 					}
-					setNotice({ kind: "ok", text: hostText(t, "restarting", next) });
+					safeSetNotice({ kind: "ok", text: hostText(t, "restarting", next) });
 					if (full) return;
 					clearTimeout(watch);
 					restartOnce = false;
-					waitForRestart(setNotice, setBusy, t);
+					waitForRestart(safeSetNotice, setBusy, t);
 				})
 				.catch((e) => {
 					const msg = String((e && e.message) || e || "");
