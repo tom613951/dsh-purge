@@ -3,6 +3,9 @@
 import * as core from "../lib/core.js";
 import * as rules from "../lib/rules.js";
 import * as reapply from "../lib/reapply.js";
+import fs from "node:fs";
+import path from "node:path";
+import { findDesktopAppExecutable } from "../lib/desktop.js";
 import { readTuning, writeTuning, TUNING_DEFAULTS } from "../lib/tuning.js";
 import { createProbe, readProbe, clearProbe, probeMessage } from "../lib/probe.js";
 import { readOverrides, clearOverride } from "../lib/anchors.js";
@@ -207,6 +210,18 @@ async function main() {
     return;
   }
 
+  const home = core.findDshHome();
+  if (
+    !process.env.DSH_SURFACE &&
+    home &&
+    fs.existsSync(path.join(home, "profiles", "desktop", "package.json")) &&
+    !fs.existsSync(path.join(home, "profiles", "web", "package.json")) &&
+    findDesktopAppExecutable()
+  ) {
+    process.env.DSH_SURFACE = "desktop";
+    core.resetPathMemo();
+  }
+
   const state = await core.gatherState();
   console.log(printStatus(state));
   console.log("");
@@ -295,7 +310,7 @@ async function main() {
     }
     /* 命令行卸载没有「重启后助手」这一步：插件目录不会自己消失，得在这里删。
        （界面卸载是把这一步交给独立助手，等端口释放后再删。） */
-    const fs = await import("node:fs");
+
     for (const dir of result.cleanup || []) {
       try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 120 }); }
       catch (e) { console.log(`  ⚠ 未能删除 ${dir}: ${e && e.message ? e.message : e}`); }
