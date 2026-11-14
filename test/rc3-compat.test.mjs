@@ -545,8 +545,13 @@ test("原子写入与死文件清理：状态写盘无 .tmp 残留，不再写�
     fs.writeFileSync(path.join(aiBase, "dsh", "package.json"), JSON.stringify({ name: "@deepseek-ai/dsh", bin: { dsh: "lib/bin.js" } }), "utf8");
 
     const installed = installHideConsoleIntoBin(aiBase);
-    assert.equal(installed, "injected");
-    assert.equal(fs.existsSync(path.join(binDir, "dsh-purge-hide-console.js")), true);
+    if (process.platform === "win32") {
+      assert.equal(installed, "injected");
+      assert.equal(fs.existsSync(path.join(binDir, "dsh-purge-hide-console.js")), true);
+    } else {
+      assert.equal(installed, "skipped_not_win32");
+      assert.equal(fs.existsSync(path.join(binDir, "dsh-purge-hide-console.js")), false);
+    }
     assert.equal(fs.existsSync(path.join(binDir, "dsh-purge-child-process-hide.mjs")), false);
 
     const legacyFacade = path.join(binDir, "dsh-purge-child-process-hide.mjs");
