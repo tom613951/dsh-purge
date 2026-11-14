@@ -31,10 +31,15 @@ function printStatus(state) {
   out.push(`  注入文件       ${state.override_path}`);
   out.push(`  注入状态       ${state.override_status}`);
   let tuning = { ...TUNING_DEFAULTS };
-  try { tuning = readTuning(state.dsh_home); } catch { /* ignore */ }
+  let tuningErr = null;
+  try { tuning = readTuning(state.dsh_home); } catch (e) { tuningErr = e; }
+  if (tuningErr) {
+    out.push(`  ⚠ 微调配置错误        ${tuningErr.message || tuningErr}`);
+  }
   out.push(`  强化段 / boost       ${tuning.boost ? "开启 / on" : "关闭 / off"}`);
   out.push(`  注入位置 / position   ${tuning.injectPosition}`);
   out.push(`  拒答拦截 / retry      ${tuning.refusalRetry ? "开启 / on" : "关闭 / off"}`);
+  out.push(`  组件拆解 / decompose  ${tuning.refusalDecompose !== false ? "开启 / on" : "关闭 / off"}`);
   out.push(`  多轮清洗 / scrubbing  ${tuning.refusalScrubbing !== false ? "开启 / on" : "关闭 / off"}`);
   const probe = readProbe(state.dsh_home);
   out.push(`  破甲探针 / probe      ${probe ? `存活 [${probe.nonce}] (剩余 ${Math.round(probe.remainingMs / 60000)}m)` : "未激活 / inactive"}`);
@@ -196,6 +201,17 @@ async function main() {
     return;
   }
 
+  const decomposeIdx = args.findIndex((a) => a === "--refusal-decompose" || a === "--decompose");
+  if (decomposeIdx >= 0) {
+    const home = core.findDshHome();
+    const val = (args[decomposeIdx + 1] || "").toLowerCase();
+    const current = readTuning(home).refusalDecompose !== false;
+    const next = val === "on" ? true : val === "off" ? false : !current;
+    writeTuning({ refusalDecompose: next }, home);
+    console.log(`拒答最小组件拆解 (Refusal Decompose): ${next ? "已开启" : "已关闭"}`);
+    return;
+  }
+
   if (mode === "--help" || args.includes("-h")) {
     console.log(`dsh-purge 用法:
   dsh-purge --status     显示状态
@@ -206,6 +222,7 @@ async function main() {
   dsh-purge --boost <on|off>              开关尾部破甲强化段 (默认 on)
   dsh-purge --inject-position <pos>      注入位置 (head|tail|both, 默认 head)
   dsh-purge --refusal-retry <on|off>      开关模型拒答流式拦截与重试 (默认 on)
+  dsh-purge --refusal-decompose <on|off>  开关拒答第三阶段最小组件拆解 (默认 on)
   dsh-purge --help       帮助`);
     return;
   }

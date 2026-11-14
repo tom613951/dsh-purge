@@ -478,7 +478,9 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"tuning.safetyFilter": "自动剥离纯安全段",
 			"tuning.boost": "尾部强化段",
 			"tuning.refusalRetry": "拒答拦截重试",
+			"tuning.refusalDecompose": "拒答最小组件拆解",
 			"tuning.refusalScrubbing": "多轮历史拒答清洗",
+			"tuning.loadError": "微调配置不可读：{error}",
 			"tuning.anchorMode": "尾锚模式",
 			"tuning.anchor.full": "完整 (full)",
 			"tuning.anchor.compact": "精简 (compact)",
@@ -843,7 +845,9 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"tuning.safetyFilter": "Strip safety-only sections",
 			"tuning.boost": "Tail boost section",
 			"tuning.refusalRetry": "Refusal intercept retry",
+			"tuning.refusalDecompose": "Minimal-component decomposition",
 			"tuning.refusalScrubbing": "Multi-turn refusal scrubbing",
+			"tuning.loadError": "Tuning config unreadable: {error}",
 			"tuning.anchorMode": "Anchor mode",
 			"tuning.anchor.full": "Full",
 			"tuning.anchor.compact": "Compact",
@@ -1470,8 +1474,16 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 
 			useEffect(() => {
 				apiJson("/dsh-purge/tuning")
-					.then((d) => { if (d && d.ok && d.tuning) setCfg(d.tuning); })
-					.catch(() => {});
+					.then((d) => {
+						if (d && d.ok && d.tuning) {
+							setCfg(d.tuning);
+						} else if (d && d.error) {
+							setNotice({ kind: "error", text: t("tuning.loadError", { error: d.error }) });
+						}
+					})
+					.catch((e) => {
+						setNotice({ kind: "error", text: t("tuning.loadError", { error: e && e.message ? e.message : String(e || "") }) });
+					});
 			}, []);
 
 			const save = (patch) => {
@@ -1501,7 +1513,17 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 					.finally(() => setBusy(false));
 			};
 
-			if (!cfg) return null;
+			if (!cfg) {
+				if (notice.kind === "error") {
+					return h("div", { className: "dshp-cr", style: { marginTop: 12 } },
+						h("div", { className: "dshp-sub" },
+							h("h4", null, t("tuning.title")),
+							noticeNode(notice),
+						),
+					);
+				}
+				return null;
+			}
 			return h("div", { className: "dshp-cr", style: { marginTop: 12 } },
 				h("div", { className: "dshp-sub" },
 					h("h4", null, t("tuning.title")),
@@ -1535,6 +1557,15 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 							onChange: (e) => save({ refusalRetry: e.target.checked }),
 						}),
 						t("tuning.refusalRetry"),
+					),
+					h("label", null,
+						h("input", {
+							type: "checkbox",
+							checked: cfg.refusalDecompose !== false,
+							disabled: busy,
+							onChange: (e) => save({ refusalDecompose: e.target.checked }),
+						}),
+						t("tuning.refusalDecompose"),
 					),
 					h("label", null,
 						h("input", {
@@ -2686,10 +2717,15 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 			if (/^1\.1\.11(?:-|$)/.test(ver)) return false;
 			const parts = ver.match(/^(\d+)\.(\d+)\.(\d+)/);
 			if (!parts) return false;
-			if (+parts[1] !== 1) return +parts[1] > 1;
-			if (+parts[2] !== 1) return +parts[2] > 1;
-			return +parts[3] >= 12;
+			const maj = +parts[1];
+			const min = +parts[2];
+			const pat = +parts[3];
+			if (maj === 1 && min === 0) return false;
+			if (maj === 1 && min === 1) return pat >= 12;
+			return true;
 		}
+
+		const LISTED_BETA_RE = /(?:^|[-._])(beta|alpha|pre|preview|test)(?:\d|$|[-._])/i;
 
 		function splitListedVersion(raw) {
 			const text = String(raw || "").trim().replace(/^v/i, "");
@@ -2698,29 +2734,59 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 			return { core: [core[0] || 0, core[1] || 0, core[2] || 0], pre: cut.slice(1).join("-") };
 		}
 
+		function listedVersionEpoch(core) {
+			return core[0] === 1 && (core[1] === 1 || core[1] === 2) ? 0 : 1;
+		}
+
+		function compareListedPre(aPre, bPre) {
+			if (!aPre && !bPre) return 0;
+			if (aPre && !bPre) return -1;
+			if (!aPre && bPre) return 1;
+			const ta = String(aPre).split(/[.-]/).filter(Boolean);
+			const tb = String(bPre).split(/[.-]/).filter(Boolean);
+			const len = Math.max(ta.length, tb.length);
+			for (let i = 0; i < len; i += 1) {
+				if (i >= ta.length) return -1;
+				if (i >= tb.length) return 1;
+				const xa = ta[i];
+				const xb = tb[i];
+				const na = /^\d+$/.test(xa);
+				const nb = /^\d+$/.test(xb);
+				if (na && nb) {
+					const ia = Number(xa);
+					const ib = Number(xb);
+					if (ia !== ib) return ia > ib ? 1 : -1;
+					continue;
+				}
+				if (xa !== xb) return xa > xb ? 1 : -1;
+			}
+			return 0;
+		}
+
 		function listedVersionNewer(remote, local) {
 			if (!remote || !local || String(remote) === String(local)) return false;
 			const a = splitListedVersion(remote);
 			const b = splitListedVersion(local);
+			const epochA = listedVersionEpoch(a.core);
+			const epochB = listedVersionEpoch(b.core);
+			if (epochA !== epochB) return epochA > epochB;
 			for (let i = 0; i < 3; i += 1) {
 				if (a.core[i] !== b.core[i]) return a.core[i] > b.core[i];
 			}
-			if (a.pre && !b.pre) return false;
-			if (!a.pre && b.pre) return true;
-			return a.pre > b.pre;
+			return compareListedPre(a.pre, b.pre) > 0;
 		}
 
 		function listedCeiling(versions, localVer) {
 			let best = "";
 			const rows = (versions || []).slice();
 			const local = String(localVer || "").replace(/^v/i, "");
-			if (local && !/(?:^|[-._])(beta|rc|pre|preview|test)(?:\d|$|[-._])/i.test(local)) {
+			if (local && !LISTED_BETA_RE.test(local)) {
 				rows.push({ channel: "stable", version: local });
 			}
 			for (const item of rows) {
 				if (!item || item.channel === "beta") continue;
 				const ver = String(item.version || "").replace(/^v/i, "");
-				if (!/^\d+\.\d+\.\d+/.test(ver) || /(?:^|[-._])(beta|rc|pre|preview|test)(?:\d|$|[-._])/i.test(ver)) continue;
+				if (!/^\d+\.\d+\.\d+/.test(ver) || LISTED_BETA_RE.test(ver)) continue;
 				if (!best || listedVersionNewer(ver, best)) best = ver;
 			}
 			return best;
@@ -2731,7 +2797,7 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 			if (!item) return false;
 			if (item.ref === "beta" || item.id === "beta") return true;
 			if (item.channel === "beta") return false;
-			if (/(?:^|[-._])(beta|rc|pre|preview|test)(?:\d|$|[-._])/i.test(ver)) return false;
+			if (LISTED_BETA_RE.test(ver)) return false;
 			return true;
 		}
 

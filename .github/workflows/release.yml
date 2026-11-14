@@ -52,7 +52,7 @@ jobs:
             git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" HEAD
             args=(release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes "$tag")
             case "$version" in
-              *beta*|*alpha*|*rc*) args+=(--prerelease) ;;
+              *beta*|*alpha*) args+=(--prerelease) ;;
             esac
             gh "${args[@]}"
           fi
