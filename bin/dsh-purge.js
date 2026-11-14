@@ -263,8 +263,7 @@ async function main() {
       const m = r.status === "applied" ? "✓ 已清洗" : r.status === "already" ? "- 已是最新" : r.status === "missing_file" ? "⚠ 文件缺失" : `✗ ${r.status}`;
       console.log(`  ${m} patch #${String(r.patch_id).padEnd(2)} ${r.name}`);
     }
-    const flashHost = hosts[0]?.aiBase || state.ai_base;
-    const flash = core.silenceCmdFlash(flashHost);
+    const flash = hosts[0]?.flash || core.silenceCmdFlash(state.ai_base);
     console.log(`  cmd-flash=${flash.entry} phase-1=${flash.phase1} ok=${flash.ok}`);
     if (hosts.length > 1) {
       console.log(`  多宿主 / multi-host: ${hosts.length} 份 @deepseek-ai 已清洗`);

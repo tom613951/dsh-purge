@@ -250,3 +250,19 @@ test("parseHostVersion: 拆出主次修订与预发布段", () => {
   assert.equal(parseHostVersion("not-a-version"), null);
   assert.deepEqual(parseHostVersion("v1.2.3"), { major: 1, minor: 2, patch: 3, pre: [] });
 });
+
+test("自标记与依赖前置的补丁 (#46/#84/#88) 在 Pass 1 前不误报 drifted", () => {
+  const p46 = ALL_PATCHES.find((p) => p.id === 46);
+  const p84 = ALL_PATCHES.find((p) => p.id === 84);
+  const p88 = ALL_PATCHES.find((p) => p.id === 88);
+  assert.ok(p46 && p84 && p88, "找不到 #46/#84/#88");
+
+  assert.equal(isSelfMarkedPatch(p88), true, "#88 模式含 // [dsh-purge-87] 应识别为自标记");
+  assert.equal(p46.silentWhenMissing, true);
+  assert.equal(p84.silentWhenMissing, true);
+  assert.equal(p88.silentWhenMissing, true);
+
+  assert.equal(filePatchOutcome("function plainHostShell() {}", p46, "main.js"), "skipped");
+  assert.equal(filePatchOutcome("process.on('exit', () => {})", p84, "host-process.js"), "skipped");
+  assert.equal(filePatchOutcome("function runLoop() {}", p88, "index.js"), "skipped");
+});
