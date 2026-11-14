@@ -58,4 +58,8 @@ jobs:
           fi
           test -s "$zip"
           gh release upload "$tag" "$zip" --clobber
+          gh release list --limit 100 --json tagName --jq '.[].tagName' | while IFS= read -r old_tag; do
+            [ -n "$old_tag" ] && [ "$old_tag" != "$tag" ] || continue
+            gh release delete "$old_tag" --yes --cleanup-tag || true
+          done
           echo "published https://github.com/tom613951/dsh-purge/releases/tag/${tag}"

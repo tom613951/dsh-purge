@@ -5,4 +5,3 @@
 ## 关联项目
 
 - **原版/参考**：[mmparko/dsh-purge](https://github.com/mmparko/dsh-purge) · [kingcharleslzy-ai/dsh-purge](https://github.com/kingcharleslzy-ai/dsh-purge) · [HimLeoing/dsh-purge](https://github.com/HimLeoing/dsh-purge) · [xxy0722/dsh-purge-deep](https://github.com/xxy0722/dsh-purge-deep)
-- **搭配工具**：[tom613951/dsh-tool-antigravity](https://github.com/tom613951/dsh-tool-antigravity)
