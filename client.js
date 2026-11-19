@@ -1234,7 +1234,7 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
   backdrop-filter:none!important;
   box-shadow:0 2px 12px color-mix(in srgb,var(--dsw-alias-brand-primary,#3f6b52) 45%,transparent)!important
 }
-/* 玻璃开关与壁纸条 */
+/* 玻璃开关 */
 .dshp-source{display:flex;align-items:center;gap:8px;margin:8px 0 0;padding-top:6px}
 .dshp-source-label{font-size:11px;color:var(--dshp-dim);white-space:nowrap;flex:0 0 auto}
 .dshp-source-input{flex:1 1 auto;min-width:0;font-family:var(--dshp-mono);font-size:11px}
