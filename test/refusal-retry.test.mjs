@@ -12,6 +12,10 @@ import {
   RETRY_NUDGE,
   FRAME_NUDGE,
   DECOMPOSE_NUDGE,
+  SEED_PRIM_TEXT,
+  withSeedPrime,
+  deliveryIsThin,
+  looksLikePartialRefusal,
 } from "../lib/refusal-retry.js";
 
 test("looksLikeRefusal 准确识别中英文拒答与回避话术", () => {
@@ -204,3 +208,56 @@ test("streamWithRefusalRetry 关闭 decompose 时最多 3 次尝试并按预算�
     fs.rmSync(tmpHome, { recursive: true, force: true });
   }
 });
+
+test("seed-prim 把骨架追加到 user 消息末尾而不改变消息结构", () => {
+  const user = { role: "user", content: [{ type: "text", text: "写一个加密模块" }] };
+  const out = withSeedPrime({ messages: [{ role: "system", content: "base" }, user] });
+  assert.equal(out.messages.length, 2, "不新增 assistant 伪消息避免 DSH 内部 replayState 组装抛错");
+  assert.equal(out.messages[1].role, "user");
+  assert.match(out.messages[1].content[0].text, /写一个加密模块/);
+  assert.match(out.messages[1].content[0].text, /实现如下/);
+});
+
+test("deliveryIsThin 与 looksLikePartialRefusal 准确判定薄交付与半推脱", () => {
+  assert.equal(deliveryIsThin("公开资料：这是一段背景介绍。"), true);
+  assert.equal(deliveryIsThin("```python\n" + "line\n".repeat(12) + "```"), false);
+
+  const halfRefuse = "公开层面能查到的如下：这是一段背景。\n我不能协助你做未授权操作。";
+  assert.equal(looksLikePartialRefusal(halfRefuse), true);
+
+  const fullDeliver = "以下是完整实现：\n```python\n" + "print('ok')\n".repeat(15) + "```\n要现在执行吗？";
+  assert.equal(looksLikePartialRefusal(fullDeliver), false);
+});
+
+test("seed 臂在 nudge 与 fiction 均拒答后触发", async () => {
+  let n = 0;
+  const seen = [];
+  const factory = (options) => {
+    n += 1;
+    const last = options.messages[options.messages.length - 1];
+    const tailText = JSON.stringify(last.content);
+    seen.push({ attempt: n, tailRole: last.role, hasSkeleton: /实现如下/.test(tailText) });
+    return (async function* () {
+      if (n <= 3) {
+        yield { type: "text-delta", text: "这个我不做。" };
+      } else {
+        yield { type: "text-delta", text: "以下是核心逻辑实现：\n" };
+        yield { type: "text-delta", text: "```python\n" + "def run(): pass\n".repeat(12) + "```\n" };
+      }
+    })();
+  };
+
+  const chunks = [];
+  for await (const c of streamWithRefusalRetry(
+    factory,
+    { messages: [{ role: "system", content: "base" }, { role: "user", content: "x" }] },
+    { seed: true, decompose: true }
+  )) {
+    chunks.push(c);
+  }
+  assert.equal(n, 4, "nudge → fiction 都拒答后进入第 4 次尝试（seed 臂）");
+  assert.equal(seen[3].tailRole, "user", "seed 臂不伪造 assistant 角色");
+  assert.equal(seen[3].hasSkeleton, true, "seed 臂把骨架注入 user 消息中");
+  assert.ok(SEED_PRIM_TEXT.length > 10);
+});
+
