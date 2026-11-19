@@ -1,6 +1,7 @@
 # 不上传
 node_modules/
 *.tgz
+*.zip
 npm-debug.log*
 *.log
 .DS_Store
