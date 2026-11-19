@@ -263,6 +263,14 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"update.current": "当前",
 			"update.confirmSwitch": "切换到 {version}？之后可再切回另一通道或其它版本。本地未提交的插件改动不会保留。",
 			"update.confirmChannel": "切换到{version}？会按该通道重新安装插件，本地未提交的插件改动不会保留。",
+			"look.glass": "液态玻璃",
+			"look.glass.desc": "毛玻璃面板",
+			"look.wall": "壁纸",
+			"look.wall.none": "无",
+			"look.wall.tune": "壁纸调节",
+			"look.wall.opacity": "透明度",
+			"look.wall.blur": "模糊",
+			"look.wall.scrim": "压暗",
 			"metric.version": "版本",
 			"action.apply": "应用",
 			"action.revert": "还原",
@@ -630,6 +638,14 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"update.current": "current",
 			"update.confirmSwitch": "Switch to {version}? You can switch back later. Uncommitted plugin edits will not be kept.",
 			"update.confirmChannel": "Switch to {version}? The plugin will be reinstalled from that channel. Uncommitted plugin edits will not be kept.",
+			"look.glass": "Liquid glass",
+			"look.glass.desc": "Frosted panels",
+			"look.wall": "Wallpaper",
+			"look.wall.none": "None",
+			"look.wall.tune": "Wallpaper tuning",
+			"look.wall.opacity": "Opacity",
+			"look.wall.blur": "Blur",
+			"look.wall.scrim": "Dim",
 			"metric.version": "Version",
 			"action.apply": "Apply",
 			"action.revert": "Restore",
@@ -1175,7 +1191,218 @@ body[data-ds-dark-theme] .rt-btn-primary:hover:not(:disabled),
 body[data-ds-dark-theme] .dshp-dock-body .rt-btn-primary,
 .dshp-dock[data-theme="dusk"] .dshp-dock-body .rt-btn-primary{background:#3d8f68!important;border-color:#3d8f68!important;color:#fff!important;-webkit-text-fill-color:#fff!important;backdrop-filter:none}
 body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-step-no{background:#3d8f68;color:#fff}
+/* ── 液态玻璃（Liquid Glass）主题 ─────────────────────────────────────────
+   参照 dsh-wallpaper-engine 的配方：backdrop-filter 三件套
+   blur() + saturate() + brightness()，再叠一层极淡的白色内高光。
+   下面这些规则只在 .dshp-root[data-glass="1"] 下生效，关掉玻璃时一像素不动。 */
+.dshp-root[data-glass="1"]{
+  --dshp-glass-alpha:.42;
+  --dshp-glass-blur:18px;
+  --dshp-glass-sat:1.8;
+  --dshp-glass-bright:1.04;
+  --dshp-paper:color-mix(in srgb,var(--dsw-alias-bg-layer-1,#f6f4ef) calc(var(--dshp-glass-alpha)*100%),transparent);
+  --dshp-line:color-mix(in srgb,#fff calc(var(--dshp-glass-alpha)*26%),transparent)
+}
+.dshp-root[data-glass="1"][data-theme="dusk"]{
+  --dshp-glass-alpha:.34;
+  --dshp-glass-bright:.96;
+  --dshp-paper:color-mix(in srgb,#0b0d10 calc(var(--dshp-glass-alpha)*100%),transparent);
+  --dshp-line:color-mix(in srgb,#fff 14%,transparent)
+}
+/* 玻璃表面：模糊 + 提饱和 + 微增亮，三档明度用 0.9 / 1.0 / 1.15 区分层次 */
+.dshp-root[data-glass="1"] .dshp-card,
+.dshp-root[data-glass="1"] .dshp-panel,
+.dshp-root[data-glass="1"] .dshp-section,
+.dshp-root[data-glass="1"] .dshp-dock,
+.dshp-root[data-glass="1"] .dshp-dock-body,
+.dshp-root[data-glass="1"] .dshp-dock-body .rt-card,
+.dshp-root[data-glass="1"] .dshp-dock-body .rt-pane,
+.dshp-root[data-glass="1"] .dshp-dock-body .rt-side,
+.dshp-root[data-glass="1"] .dshp-dock-body .rt-toolbar{
+  -webkit-backdrop-filter:blur(var(--dshp-glass-blur)) saturate(var(--dshp-glass-sat)) brightness(var(--dshp-glass-bright));
+  backdrop-filter:blur(var(--dshp-glass-blur)) saturate(var(--dshp-glass-sat)) brightness(var(--dshp-glass-bright));
+  box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 30%,transparent),0 8px 32px color-mix(in srgb,#000 18%,transparent);
+  border-color:var(--dshp-line)
+}
+/* 输入框 / 按钮：比卡片低半档，避免整屏都是同一种毛玻璃导致视觉扁平 */
+.dshp-root[data-glass="1"] .dshp-field,
+.dshp-root[data-glass="1"] .dshp-area,
+.dshp-root[data-glass="1"] .dshp-dock-body .rt-btn,
+.dshp-root[data-glass="1"] .dshp-dock-body .rt-input,
+.dshp-root[data-glass="1"] .dshp-dock-body .rt-textarea{
+  -webkit-backdrop-filter:blur(10px);
+  backdrop-filter:blur(10px);
+  background:color-mix(in srgb,var(--dsw-alias-bg-layer-2,#e9e6df) 62%,transparent)!important
+}
+.dshp-root[data-glass="1"][data-theme="dusk"] .dshp-field,
+.dshp-root[data-glass="1"][data-theme="dusk"] .dshp-area,
+.dshp-root[data-glass="1"][data-theme="dusk"] .dshp-dock-body .rt-btn,
+.dshp-root[data-glass="1"][data-theme="dusk"] .dshp-dock-body .rt-input,
+.dshp-root[data-glass="1"][data-theme="dusk"] .dshp-dock-body .rt-textarea{
+  background:color-mix(in srgb,#000 55%,transparent)!important
+}
+/* 主按钮保留实底，不透底，避免和背景混掉导致点不动 */
+.dshp-root[data-glass="1"] .dshp-btn-primary{
+  -webkit-backdrop-filter:none!important;
+  backdrop-filter:none!important;
+  box-shadow:0 2px 12px color-mix(in srgb,var(--dsw-alias-brand-primary,#3f6b52) 45%,transparent)!important
+}
+/* 玻璃开关与壁纸条 */
+.dshp-source{display:flex;align-items:center;gap:8px;margin:8px 0 0;padding-top:6px}
+.dshp-source-label{font-size:11px;color:var(--dshp-dim);white-space:nowrap;flex:0 0 auto}
+.dshp-source-input{flex:1 1 auto;min-width:0;font-family:var(--dshp-mono);font-size:11px}
+.dshp-glass-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dshp-glass-row label{display:inline-flex;align-items:center;gap:6px;font:12px/1 var(--dshp-sans);color:var(--dshp-mute)}
+.dshp-glass-swatches{display:flex;gap:8px;flex-wrap:wrap}
+.dshp-wall{position:relative;width:76px;height:44px;border-radius:8px;overflow:hidden;border:1px solid var(--dshp-line);cursor:pointer;background:#111;flex:0 0 auto;padding:0}
+.dshp-wall img{width:100%;height:100%;object-fit:cover;display:block}
+.dshp-wall.is-on{border-color:var(--dshp-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--dshp-accent) 40%,transparent)}
+.dshp-wall span{position:absolute;left:0;right:0;bottom:0;padding:2px 4px;font:9px/1.2 var(--dshp-sans);color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.72));text-shadow:0 1px 2px #000}
+.dshp-wall-none{display:grid;place-items:center;color:var(--dshp-mute);font:11px/1 var(--dshp-sans);background:repeating-linear-gradient(45deg,#1a1a1a,#1a1a1a 6px,#222 6px,#222 12px)}
+.dshp-wall video{width:100%;height:100%;object-fit:cover;display:block}
+.dshp-wall-badge{font-style:normal;margin-left:3px;padding:0 3px;border-radius:3px;background:color-mix(in srgb,var(--dshp-accent) 70%,transparent);font-size:8px}
+/* ── 壁纸层：fixed 挂在 body 下，z-index:-2，压在整个 GUI 之后 ──────────── */
+.dshw-layer{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;background-color:#0a0c0e;opacity:1;transition:opacity .45s var(--dshp-ease,cubic-bezier(.16,1,.3,1))}
+.dshw-layer[data-hidden="1"]{opacity:0}
+.dshw-layer img,.dshw-layer video{width:100%;height:100%;object-fit:cover;display:block;opacity:var(--dshw-opacity,1)}
+/* 壁纸取景：位移与缩放用独立属性，避免和过渡的 transform 打架 */
+.dshw-layer{translate:var(--dshw-x,0px) var(--dshw-y,0px);scale:var(--dshw-scale,1.02)}
+/* 暗色蒙版：保证玻璃下面的壁纸不至于把文字顶掉 */
+.dshw-scrim{position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,color-mix(in srgb,#000 var(--dshw-scrim,26%),transparent),color-mix(in srgb,#000 calc(var(--dshw-scrim,26%) * 1.6),transparent))}
+/* 根元素兜底色：整条合成链掉像素时退化成同色，而不是白闪 */
+html[data-dshw="1"]{background-color:var(--dshw-underlay,#0a0c0e)}
 `;
+
+// ── 壁纸与液态玻璃 ──────────────────────────────────────────────────────────
+// 壁纸全部随包内置，走 host 的静态路由 /purge-wallpapers/<id>.<ext>。
+// 分静态图与动态视频两类：视频走 <video autoplay loop muted playsinline>，
+// 8 秒无缝循环，1920x1080。
+// 全部状态落在 localStorage，刷新后不丢；壁纸层直接挂 body（z-index:-2），
+// 不参与 dsh-purge 面板的 React 树，避免每次重渲染都重建媒体元素。
+const WALL_KEY = "dshp.wall";
+const GLASS_KEY = "dshp.glass";
+// 与 lib/wallpapers.js 的 WALLPAPERS 保持一致（顺序即 UI 顺序）。
+const WALLPAPERS = [
+	{ id: "neko-aurora", label: "极光", kind: "video", ext: "mp4" },
+	{ id: "neko-ripple", label: "涟漪", kind: "video", ext: "mp4" },
+	{ id: "terminal-rain", label: "终端雨", kind: "image", ext: "jpg" },
+	{ id: "hexstream", label: "十六进制", kind: "image", ext: "jpg" },
+	{ id: "topology", label: "拓扑", kind: "image", ext: "jpg" },
+];
+const WALL_BY_ID = new Map(WALLPAPERS.map((w) => [w.id, w]));
+
+function wallUrl(id) {
+	const hit = WALL_BY_ID.get(id);
+	return "/purge-wallpapers/" + encodeURIComponent(id) + "." + (hit ? hit.ext : "jpg");
+}
+
+function wallKind(id) {
+	const hit = WALL_BY_ID.get(id);
+	return hit ? hit.kind : "image";
+}
+
+function readWallPref() {
+	try {
+		const raw = localStorage.getItem(WALL_KEY);
+		if (!raw) return { id: "", opacity: 0.9, blur: 0, scrim: 26 };
+		const o = JSON.parse(raw);
+		return {
+			id: typeof o.id === "string" ? o.id : "",
+			opacity: typeof o.opacity === "number" ? Math.min(1, Math.max(0.2, o.opacity)) : 0.9,
+			blur: typeof o.blur === "number" ? Math.min(24, Math.max(0, o.blur)) : 0,
+			scrim: typeof o.scrim === "number" ? Math.min(70, Math.max(0, o.scrim)) : 26,
+		};
+	} catch {
+		return { id: "", opacity: 0.9, blur: 0, scrim: 26 };
+	}
+}
+
+function saveWallPref(pref) {
+	try { localStorage.setItem(WALL_KEY, JSON.stringify(pref)); } catch { /* ignore */ }
+}
+
+function readGlassPref() {
+	try {
+		const raw = localStorage.getItem(GLASS_KEY);
+		return raw === null ? true : raw === "1";
+	} catch {
+		return true;
+	}
+}
+
+function saveGlassPref(on) {
+	try { localStorage.setItem(GLASS_KEY, on ? "1" : "0"); } catch { /* ignore */ }
+}
+
+/**
+ * 同步壁纸层到 DOM。壁纸层不属于 React 树：面板重渲染时不该重挂媒体元素，
+ * 避免每次重渲染都重新解码大图或重新挂载视频。
+ */
+function applyWallpaperToDom(pref) {
+	if (typeof document === "undefined") return;
+	const root = document.documentElement;
+	let layer = document.querySelector(".dshw-layer");
+	let scrim = document.querySelector(".dshw-scrim");
+
+	if (!pref || !pref.id) {
+		layer?.remove();
+		scrim?.remove();
+		root.removeAttribute("data-dshw");
+		root.style.removeProperty("--dshw-underlay");
+		return;
+	}
+
+	if (!layer) {
+		layer = document.createElement("div");
+		layer.className = "dshw-layer";
+		layer.setAttribute("aria-hidden", "true");
+		document.body.prepend(layer);
+	}
+	if (!scrim) {
+		scrim = document.createElement("div");
+		scrim.className = "dshw-scrim";
+		scrim.setAttribute("aria-hidden", "true");
+		document.body.prepend(scrim);
+		document.body.prepend(layer);
+	}
+
+	let media = layer.querySelector("img, video");
+	if (!media || media.dataset.wall !== pref.id) {
+		const kind = wallKind(pref.id);
+		if (kind === "video") {
+			media = document.createElement("video");
+			media.muted = true;
+			media.defaultMuted = true;
+			media.loop = true;
+			media.autoplay = true;
+			media.playsInline = true;
+			media.setAttribute("muted", "");
+			media.setAttribute("playsinline", "");
+			media.setAttribute("disablepictureinpicture", "");
+			media.preload = "auto";
+			media.dataset.wall = pref.id;
+			media.src = wallUrl(pref.id);
+			const kick = () => {
+				const p = media.play?.();
+				if (p && typeof p.catch === "function") p.catch(() => {});
+			};
+			media.addEventListener("loadeddata", kick, { once: true });
+			kick();
+		} else {
+			media = document.createElement("img");
+			media.dataset.wall = pref.id;
+			media.alt = "";
+			media.decoding = "async";
+			media.src = wallUrl(pref.id);
+		}
+		layer.replaceChildren(media);
+	}
+	layer.style.setProperty("--dshw-opacity", String(pref.opacity));
+	media.style.filter = pref.blur > 0 ? "blur(" + pref.blur + "px)" : "";
+	scrim.style.setProperty("--dshw-scrim", pref.scrim + "%");
+	root.setAttribute("data-dshw", "1");
+	root.style.setProperty("--dshw-underlay", "#0a0c0e");
+}
 
 		function formatSize(bytes) {
 			if (typeof bytes !== "number" || !isFinite(bytes) || bytes < 0) return "0 B";
@@ -1737,11 +1964,17 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 			return node;
 		}
 
-		function PurgifySection() {
+		function PurgifySection(props = {}) {
 			useEffect(() => () => stopRestartPolling(), []);
 			const t = useT();
 			const tRef = useRef(t);
 			tRef.current = t;
+			const [localGlassOn, setLocalGlassOn] = useState(readGlassPref);
+			const [localWall, setLocalWall] = useState(readWallPref);
+			const glassOn = props.glassOn !== undefined ? props.glassOn : localGlassOn;
+			const setGlassOn = props.setGlassOn || setLocalGlassOn;
+			const wall = props.wall !== undefined ? props.wall : localWall;
+			const setWall = props.setWall || setLocalWall;
 			const [state, setState] = useState(null);
 			const [override, setOverride] = useState("");
 			const [defaultOverride, setDefaultOverride] = useState("");
@@ -2340,6 +2573,71 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 						renderEdition("stable"),
 						renderEdition("beta"),
 					),
+					h("div", { className: "dshp-source" },
+						h("span", { className: "dshp-source-label" }, t("look.glass")),
+						h("label", { className: "dshp-glass-row" },
+							h("input", {
+								type: "checkbox",
+								checked: glassOn,
+								onChange: (e) => setGlassOn(Boolean(e.target.checked)),
+							}),
+							t("look.glass.desc"),
+						),
+					),
+					h("div", { className: "dshp-source" },
+						h("span", { className: "dshp-source-label" }, t("look.wall")),
+						h("div", { className: "dshp-glass-swatches" },
+							h("button", {
+								type: "button",
+								className: "dshp-wall dshp-wall-none" + (wall.id ? "" : " is-on"),
+								title: t("look.wall.none"),
+								onClick: () => setWall((prev) => Object.assign({}, prev, { id: "" })),
+							}, h("span", null, t("look.wall.none"))),
+							WALLPAPERS.map((wp) => h("button", {
+								key: wp.id,
+								type: "button",
+								className: "dshp-wall" + (wall.id === wp.id ? " is-on" : ""),
+								title: wp.label + (wp.kind === "video" ? "（动态）" : ""),
+								onClick: () => setWall((prev) => Object.assign({}, prev, { id: wp.id })),
+							},
+								wp.kind === "video"
+									? h("video", {
+										src: wallUrl(wp.id),
+										muted: true,
+										loop: true,
+										autoplay: true,
+										playsInline: true,
+										preload: "metadata",
+										"aria-hidden": "true",
+									})
+									: h("img", { src: wallUrl(wp.id), alt: "", loading: "lazy", decoding: "async" }),
+								h("span", null, wp.label, wp.kind === "video" ? h("i", { className: "dshp-wall-badge" }, "动态") : null),
+							)),
+						),
+					),
+					wall.id ? h("div", { className: "dshp-source" },
+						h("span", { className: "dshp-source-label" }, t("look.wall.tune")),
+						h("label", { className: "dshp-glass-row" },
+							h("span", null, t("look.wall.opacity")),
+							h("input", {
+								type: "range", min: 20, max: 100, step: 5,
+								value: Math.round(wall.opacity * 100),
+								onChange: (e) => setWall((prev) => Object.assign({}, prev, { opacity: Number(e.target.value) / 100 })),
+							}),
+							h("span", null, t("look.wall.blur")),
+							h("input", {
+								type: "range", min: 0, max: 24, step: 1,
+								value: wall.blur,
+								onChange: (e) => setWall((prev) => Object.assign({}, prev, { blur: Number(e.target.value) })),
+							}),
+							h("span", null, t("look.wall.scrim")),
+							h("input", {
+								type: "range", min: 0, max: 70, step: 2,
+								value: wall.scrim,
+								onChange: (e) => setWall((prev) => Object.assign({}, prev, { scrim: Number(e.target.value) })),
+							}),
+						),
+					) : null,
 					noticeNode(updateNotice),
 				),
 				s ? h("div", { className: "dshp-metrics" },
@@ -3244,6 +3542,15 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 			useEffect(() => () => stopRestartPolling(), []);
 			const t = typeof props.t === "function" ? props.t : ((key) => key);
 			const [theme, setTheme] = useState(readTheme);
+			const [glassOn, setGlassOn] = useState(readGlassPref);
+			const [wall, setWall] = useState(readWallPref);
+			useEffect(() => {
+				saveWallPref(wall);
+				applyWallpaperToDom(wall);
+			}, [wall]);
+			useEffect(() => {
+				saveGlassPref(glassOn);
+			}, [glassOn]);
 			useEffect(() => {
 				let cancelled = false;
 				let timer = 0;
@@ -3274,9 +3581,9 @@ body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-s
 				};
 			}, []);
 			translate = t;
-			return h("div", { className: "dshp-root", "data-theme": theme },
+			return h("div", { className: "dshp-root", "data-theme": theme, "data-glass": glassOn ? "1" : "0" },
 				h("style", null, PURGE_CSS),
-				h(PurgifySection, null),
+				h(PurgifySection, { glassOn, setGlassOn, wall, setWall }),
 				h(RulesSection, null),
 			);
 		}
