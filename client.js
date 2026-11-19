@@ -263,8 +263,6 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"update.current": "当前",
 			"update.confirmSwitch": "切换到 {version}？之后可再切回另一通道或其它版本。本地未提交的插件改动不会保留。",
 			"update.confirmChannel": "切换到{version}？会按该通道重新安装插件，本地未提交的插件改动不会保留。",
-			"look.glass": "液态玻璃",
-			"look.glass.desc": "毛玻璃面板",
 			"metric.version": "版本",
 			"action.apply": "应用",
 			"action.revert": "还原",
@@ -632,8 +630,6 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"update.current": "current",
 			"update.confirmSwitch": "Switch to {version}? You can switch back later. Uncommitted plugin edits will not be kept.",
 			"update.confirmChannel": "Switch to {version}? The plugin will be reinstalled from that channel. Uncommitted plugin edits will not be kept.",
-			"look.glass": "Liquid glass",
-			"look.glass.desc": "Frosted panels",
 			"metric.version": "Version",
 			"action.apply": "Apply",
 			"action.revert": "Restore",
@@ -1179,93 +1175,7 @@ body[data-ds-dark-theme] .rt-btn-primary:hover:not(:disabled),
 body[data-ds-dark-theme] .dshp-dock-body .rt-btn-primary,
 .dshp-dock[data-theme="dusk"] .dshp-dock-body .rt-btn-primary{background:#3d8f68!important;border-color:#3d8f68!important;color:#fff!important;-webkit-text-fill-color:#fff!important;backdrop-filter:none}
 body[data-ds-dark-theme] .rt-rep-step-no,.dshp-dock[data-theme="dusk"] .rt-rep-step-no{background:#3d8f68;color:#fff}
-/* ── 液态玻璃（Liquid Glass）主题 ─────────────────────────────────────────
-   backdrop-filter 三件套：blur() + saturate() + brightness()，再叠一层极淡的白色内高光。
-   下面这些规则只在 .dshp-root[data-glass="1"] 下生效，关掉玻璃时一像素不动。 */
-.dshp-root[data-glass="1"]{
-  --dshp-glass-alpha:.42;
-  --dshp-glass-blur:18px;
-  --dshp-glass-sat:1.8;
-  --dshp-glass-bright:1.04;
-  --dshp-paper:color-mix(in srgb,var(--dsw-alias-bg-layer-1,#f6f4ef) calc(var(--dshp-glass-alpha)*100%),transparent);
-  --dshp-line:color-mix(in srgb,#fff calc(var(--dshp-glass-alpha)*26%),transparent)
-}
-.dshp-root[data-glass="1"][data-theme="dusk"]{
-  --dshp-glass-alpha:.34;
-  --dshp-glass-bright:.96;
-  --dshp-paper:color-mix(in srgb,#0b0d10 calc(var(--dshp-glass-alpha)*100%),transparent);
-  --dshp-line:color-mix(in srgb,#fff 14%,transparent)
-}
-/* 玻璃表面：模糊 + 提饱和 + 微增亮，三档明度用 0.9 / 1.0 / 1.15 区分层次 */
-.dshp-root[data-glass="1"] .dshp-card,
-.dshp-root[data-glass="1"] .dshp-panel,
-.dshp-root[data-glass="1"] .dshp-section,
-.dshp-root[data-glass="1"] .dshp-dock,
-.dshp-root[data-glass="1"] .dshp-dock-body,
-.dshp-root[data-glass="1"] .dshp-dock-body .rt-card,
-.dshp-root[data-glass="1"] .dshp-dock-body .rt-pane,
-.dshp-root[data-glass="1"] .dshp-dock-body .rt-side,
-.dshp-root[data-glass="1"] .dshp-dock-body .rt-toolbar{
-  -webkit-backdrop-filter:blur(var(--dshp-glass-blur)) saturate(var(--dshp-glass-sat)) brightness(var(--dshp-glass-bright));
-  backdrop-filter:blur(var(--dshp-glass-blur)) saturate(var(--dshp-glass-sat)) brightness(var(--dshp-glass-bright));
-  box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 30%,transparent),0 8px 32px color-mix(in srgb,#000 18%,transparent);
-  border-color:var(--dshp-line)
-}
-/* 输入框 / 按钮：比卡片低半档，避免整屏都是同一种毛玻璃导致视觉扁平 */
-.dshp-root[data-glass="1"] .dshp-field,
-.dshp-root[data-glass="1"] .dshp-area,
-.dshp-root[data-glass="1"] .dshp-dock-body .rt-btn,
-.dshp-root[data-glass="1"] .dshp-dock-body .rt-input,
-.dshp-root[data-glass="1"] .dshp-dock-body .rt-textarea{
-  -webkit-backdrop-filter:blur(10px);
-  backdrop-filter:blur(10px);
-  background:color-mix(in srgb,var(--dsw-alias-bg-layer-2,#e9e6df) 62%,transparent)!important
-}
-.dshp-root[data-glass="1"][data-theme="dusk"] .dshp-field,
-.dshp-root[data-glass="1"][data-theme="dusk"] .dshp-area,
-.dshp-root[data-glass="1"][data-theme="dusk"] .dshp-dock-body .rt-btn,
-.dshp-root[data-glass="1"][data-theme="dusk"] .dshp-dock-body .rt-input,
-.dshp-root[data-glass="1"][data-theme="dusk"] .dshp-dock-body .rt-textarea{
-  background:color-mix(in srgb,#000 55%,transparent)!important
-}
-/* 主按钮保留实底，不透底，避免和背景混掉导致点不动 */
-.dshp-root[data-glass="1"] .dshp-btn-primary{
-  -webkit-backdrop-filter:none!important;
-  backdrop-filter:none!important;
-  box-shadow:0 2px 12px color-mix(in srgb,var(--dsw-alias-brand-primary,#3f6b52) 45%,transparent)!important
-}
-/* 玻璃开关 */
-.dshp-source{display:flex;align-items:center;gap:8px;margin:8px 0 0;padding-top:6px}
-.dshp-source-label{font-size:11px;color:var(--dshp-dim);white-space:nowrap;flex:0 0 auto}
-.dshp-source-input{flex:1 1 auto;min-width:0;font-family:var(--dshp-mono);font-size:11px}
-.dshp-glass-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.dshp-glass-row label{display:inline-flex;align-items:center;gap:6px;font:12px/1 var(--dshp-sans);color:var(--dshp-mute)}
 `;
-
-// ── 液态玻璃 ──────────────────────────────────────────────────────────
-const GLASS_KEY = "dshp.glass";
-
-function readGlassPref() {
-	try {
-		const raw = localStorage.getItem(GLASS_KEY);
-		return raw === null ? true : raw === "1";
-	} catch {
-		return true;
-	}
-}
-
-function saveGlassPref(on) {
-	try { localStorage.setItem(GLASS_KEY, on ? "1" : "0"); } catch { /* ignore */ }
-}
-
-// 清理历史残留的壁纸 DOM 层与偏好
-if (typeof document !== "undefined") {
-	document.querySelector(".dshw-layer")?.remove();
-	document.querySelector(".dshw-scrim")?.remove();
-	document.documentElement?.removeAttribute("data-dshw");
-	document.documentElement?.style.removeProperty("--dshw-underlay");
-	try { localStorage.removeItem("dshp.wall"); } catch { /* ignore */ }
-}
 
 		function formatSize(bytes) {
 			if (typeof bytes !== "number" || !isFinite(bytes) || bytes < 0) return "0 B";
@@ -1827,14 +1737,11 @@ if (typeof document !== "undefined") {
 			return node;
 		}
 
-		function PurgifySection(props = {}) {
+		function PurgifySection() {
 			useEffect(() => () => stopRestartPolling(), []);
 			const t = useT();
 			const tRef = useRef(t);
 			tRef.current = t;
-			const [localGlassOn, setLocalGlassOn] = useState(readGlassPref);
-			const glassOn = props.glassOn !== undefined ? props.glassOn : localGlassOn;
-			const setGlassOn = props.setGlassOn || setLocalGlassOn;
 			const [state, setState] = useState(null);
 			const [override, setOverride] = useState("");
 			const [defaultOverride, setDefaultOverride] = useState("");
@@ -2432,17 +2339,6 @@ if (typeof document !== "undefined") {
 					h("div", { className: "dshp-editions" },
 						renderEdition("stable"),
 						renderEdition("beta"),
-					),
-					h("div", { className: "dshp-source" },
-						h("span", { className: "dshp-source-label" }, t("look.glass")),
-						h("label", { className: "dshp-glass-row" },
-							h("input", {
-								type: "checkbox",
-								checked: glassOn,
-								onChange: (e) => setGlassOn(Boolean(e.target.checked)),
-							}),
-							t("look.glass.desc"),
-						),
 					),
 					noticeNode(updateNotice),
 				),
@@ -3348,10 +3244,6 @@ if (typeof document !== "undefined") {
 			useEffect(() => () => stopRestartPolling(), []);
 			const t = typeof props.t === "function" ? props.t : ((key) => key);
 			const [theme, setTheme] = useState(readTheme);
-			const [glassOn, setGlassOn] = useState(readGlassPref);
-			useEffect(() => {
-				saveGlassPref(glassOn);
-			}, [glassOn]);
 			useEffect(() => {
 				let cancelled = false;
 				let timer = 0;
@@ -3382,9 +3274,9 @@ if (typeof document !== "undefined") {
 				};
 			}, []);
 			translate = t;
-			return h("div", { className: "dshp-root", "data-theme": theme, "data-glass": glassOn ? "1" : "0" },
+			return h("div", { className: "dshp-root", "data-theme": theme },
 				h("style", null, PURGE_CSS),
-				h(PurgifySection, { glassOn, setGlassOn }),
+				h(PurgifySection, null),
 				h(RulesSection, null),
 			);
 		}
