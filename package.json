@@ -37,7 +37,8 @@
     "embed-prompt": "node scripts/embed-default-prompt.mjs",
     "build:client": "node scripts/build-client.mjs",
     "postinstall": "node scripts/ensure-profile-bundle.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "ci": "node scripts/ci-check.mjs && npm test"
   },
   "license": "Apache-2.0",
   "keywords": [
@@ -89,10 +90,17 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1"
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh": ">=0.2.0-rc.1 <0.3.0-0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    }
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18",
+    "dsh": ">=0.2.0-rc.1 <0.3.0-0"
   },
   "dshTarget": "0.2.2-rc.5",
   "dshTargets": [

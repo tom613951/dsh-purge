@@ -21,16 +21,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Syntax-check plugin entry
+      - name: Run CI checks and tests
         run: |
-          for f in bin/*.js client.js lib/*.js lib/*.mjs lib/patches/*.js lib/redteam/*.js lib/redteam/*.mjs; do
-            [ -e "$f" ] || continue
-            node --check "$f"
-          done
+          node -v
+          npm run ci
           node --input-type=module -e "import './lib/index.js'"
-
-      - name: Run tests
-        run: npm test
 
       - name: Publish GitHub Release
         env:
@@ -39,11 +34,20 @@ jobs:
           set -euo pipefail
           version="$(node -p "require('./package.json').version")"
           tag="v${version}"
+          zip="dsh-purge-${version}.zip"
           if gh release view "$tag" >/dev/null 2>&1; then
-            echo "already published: $tag"
+            tag_commit="$(git rev-parse "refs/tags/${tag}^{}" 2>/dev/null || true)"
+            if [ "$tag_commit" != "$GITHUB_SHA" ]; then
+              git tag -f "$tag" "$GITHUB_SHA"
+              git push -f origin "refs/tags/$tag"
+            fi
+            git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" HEAD
+            test -s "$zip"
+            gh release upload "$tag" "$zip" --clobber
+            gh release edit "$tag" --title "$tag"
+            echo "updated https://github.com/tom613951/dsh-purge/releases/tag/${tag}"
             exit 0
           fi
-          zip="dsh-purge-${version}.zip"
           if git rev-parse -q --verify "refs/tags/${tag}^{}" >/dev/null; then
             commit="$(git rev-parse "refs/tags/${tag}^{}")"
             git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" "$commit"

@@ -410,6 +410,7 @@ test("包内 cordis.patch.yml 无废弃 redteam-* 块，且 dsh-purge 本体含�
     "hooksDenyBypass:",
     "anchorMode:",
     "subagentControl:",
+    "sessionMemory:",
   ]) {
     assert.equal(patchText.includes(key), true, `missing default config key ${key}`);
   }
