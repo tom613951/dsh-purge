@@ -13,6 +13,11 @@ test("#19 TOOL_RESULT_PRUNER_RAISED 提升预算而不关闭修剪", () => {
     "\theadChars: 4096,",
     "\ttailChars: 1024",
     "});",
+    "\tconst resolved = {",
+    "\t\tthresholdChars: config.thresholdChars ?? DEFAULTS.thresholdChars,",
+    "\t\theadChars: config.headChars ?? DEFAULTS.headChars,",
+    "\t\ttailChars: config.tailChars ?? DEFAULTS.tailChars",
+    "\t};",
   ].join("\n");
 
   const res = core.applyReplacementsToText(clean, p19, "index.js");

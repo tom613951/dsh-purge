@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { registerPromptSections, TAIL_PROMPT_ORDER } from "../lib/index.js";
-import { BOOST_TEXT } from "../lib/boost.js";
+import { BOOST_TEXT } from "../lib/tuning.js";
 import { writeTuning } from "../lib/tuning.js";
 
 function createHarness() {

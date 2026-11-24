@@ -272,9 +272,9 @@
     - id: tool-result-pruner
       name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
       config:
-        thresholdChars: 8192
-        headChars: 4096
-        tailChars: 1024
+        thresholdChars: 16384
+        headChars: 8192
+        tailChars: 2048
 
 # ── delegation and workflows ────────────────────────────────────────────────
 
@@ -306,7 +306,7 @@
         provider: spawn
         toolName: subagent
         modelSelection: true
-        backgroundMode: continuable
+        modelDiscovery: true
         # 子智能体是角色执行者（信息收集/资产梳理/漏洞发现/漏洞利用/内网渗透），**必须是叶子节点**：
         # maxDepth 收成 1 兜底，避免子会话继续往下委派并白吃并发预算与上下文。
         maxDepth: 1
@@ -314,16 +314,15 @@
         # 子智能体靠 maxDepth: 1 收成叶子，不再用 deny 名单。
 
     # Fork omits model selection so provider/model stay equal to the parent and
-    # the inherited history remains eligible for KV Cache reuse. This preset
-    # keeps fork continuable; parent and child inherit the same messaging tool,
-    # while the parent id and return guidance follow the inherited history.
+    # the inherited history remains eligible for KV Cache reuse; parent and child
+    # inherit the same messaging tool, while the parent id and return guidance
+    # follow the inherited history.
     - id: tool-subagent-fork
       name: '@deepseek-ai/dsh-tool-subagent'
       disabled: false
       config:
         provider: fork
         toolName: subagent_fork
-        backgroundMode: continuable
 
     # Production dsh does not install these optional providers. Install the
     # matching Bundle in this Profile and restart the Host, then copy this
@@ -335,7 +334,6 @@
       config:
         provider: codex
         toolName: subagent_codex
-        backgroundMode: one-shot
         maxDepth: provider-managed
 
     - id: tool-subagent-claude-code
@@ -344,15 +342,7 @@
       config:
         provider: claude-code
         toolName: subagent_claude_code
-        backgroundMode: one-shot
         maxDepth: provider-managed
-
-    - id: workflow-worker-thread
-      name: '@deepseek-ai/dsh-workflow-worker-thread'
-      # web 配置通常不装 worker-thread 引擎；未启动会导致整个预设 broken、模式下拉被过滤。
-      disabled: true
-      config:
-        provider: spawn
 
     - id: workflow-ptc
       name: '@deepseek-ai/dsh-workflow-ptc'

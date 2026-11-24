@@ -16,15 +16,11 @@ import {
 } from "../lib/core.js";
 import { canonicalWindowsExe } from "../lib/desktop.js";
 import { writeDrillGrant, drillGrantPath } from "../lib/drill-grant.js";
-import { writeOverride, readOverrides } from "../lib/anchors.js";
-import { createProbe, readProbe } from "../lib/probe.js";
-import { writeRecord, readRecord } from "../lib/web-reclaim.js";
 import { installHideConsoleIntoBin, revertHideConsoleFromBin } from "../lib/hide-console.js";
 import { registerPromptSections } from "../lib/index.js";
 import { atomicWriteFileSync } from "../lib/redteam/atomic-write.js";
 import { redteamRoot } from "../lib/redteam/platform-config.js";
 import { isPrereleaseName, versionLess } from "../lib/redteam/ui.js";
-import { checkUpdate, readPublishedVersion, versionIsNewer } from "../lib/update.js";
 
 function loadRestartMatchHelper() {
   const src = fs.readFileSync(new URL("../lib/restart-desktop.js", import.meta.url), "utf8");
@@ -36,21 +32,6 @@ function loadRestartMatchHelper() {
   vm.createContext(ctx);
   vm.runInContext(`${slice}\nthis.matchWindowsPids = matchWindowsPids;`, ctx);
   return ctx.matchWindowsPids;
-}
-
-function loadClientVersionHelpers() {
-  const src = fs.readFileSync(new URL("../client.js", import.meta.url), "utf8");
-  const start = src.indexOf("function skillUiAllowed(d)");
-  const end = src.indexOf("function preferListed(");
-  assert.ok(start > 0 && end > start, "client.js 必须包含版本辅助函数区块");
-  const slice = src.slice(start, end);
-  const ctx = {};
-  vm.createContext(ctx);
-  vm.runInContext(
-    `${slice}\nthis.__exports = { skillUiAllowed, splitListedVersion, listedVersionEpoch, compareListedPre, listedVersionNewer, listedCeiling, keepListedVersion };`,
-    ctx,
-  );
-  return ctx.__exports;
 }
 
 test("0.2.2-rc.3 压缩版 #56 #77 与 #96 #97 补丁均可干净命中、无漂移且幂等收敛", async () => {
@@ -126,107 +107,6 @@ test("0.2.2-rc.3 压缩版 #56 #77 与 #96 #97 补丁均可干净命中、无漂
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
-});
-
-test("versionIsNewer 与 client.js listedVersionNewer 在跨纪元与数值 rc 比较上完全一致", () => {
-  const client = loadClientVersionHelpers();
-  const cases = [
-    ["0.2.2-rc.3", "1.2.8", true],
-    ["1.2.8", "0.2.2-rc.3", false],
-    ["0.2.2-rc.4", "0.2.2-rc.3", true],
-    ["0.2.2-rc.3", "0.2.2-rc.4", false],
-    ["0.2.2-rc.10", "0.2.2-rc.9", true],
-    ["0.2.2-rc.9", "0.2.2-rc.10", false],
-    ["0.2.2", "0.2.2-rc.3", true],
-    ["0.2.2-rc.3", "0.2.2", false],
-    ["1.0.0", "0.2.2", true],
-    ["0.2.2", "1.0.0", false],
-    ["1.3.0", "1.2.9", true],
-    ["2.0.0", "1.2.8", true],
-    ["v0.2.2-rc.3", "0.2.2-rc.3", false],
-  ];
-  for (const [remote, local, expected] of cases) {
-    assert.equal(versionIsNewer(remote, local), expected, `update.versionIsNewer(${remote}, ${local})`);
-    assert.equal(client.listedVersionNewer(remote, local), expected, `client.listedVersionNewer(${remote}, ${local})`);
-  }
-
-  // -rc.N 属于正式预发布版本线，不再被归入 beta 测试通道过滤
-  assert.equal(client.keepListedVersion({ channel: "stable", version: "0.2.2-rc.3" }, "0.2.2-rc.3"), true);
-  assert.equal(client.keepListedVersion({ channel: "stable", version: "0.2.2-beta.1" }, "0.2.2-rc.3"), false);
-  assert.equal(client.keepListedVersion({ channel: "stable", version: "0.2.2-alpha.1" }, "0.2.2-rc.3"), false);
-  assert.equal(client.listedCeiling([{ channel: "stable", version: "0.2.2-rc.3" }], "1.2.8"), "0.2.2-rc.3");
-});
-
-test("skillUiAllowed 允许 0.2.2-rc.3 等新纪元版本，继续屏蔽 1.0.x 与 1.1.0..1.1.11", () => {
-  const { skillUiAllowed } = loadClientVersionHelpers();
-  assert.equal(skillUiAllowed({ plugin_version: "0.2.2-rc.3" }), true);
-  assert.equal(skillUiAllowed({ localVersion: "0.2.2" }), true);
-  assert.equal(skillUiAllowed({ plugin_version: "1.2.8" }), true);
-  assert.equal(skillUiAllowed({ plugin_version: "1.1.12" }), true);
-  assert.equal(skillUiAllowed({ plugin_version: "1.1.11" }), false);
-  assert.equal(skillUiAllowed({ plugin_version: "1.1.10" }), false);
-  assert.equal(skillUiAllowed({ plugin_version: "1.0.9" }), false);
-  assert.equal(skillUiAllowed({}), false);
-  assert.equal(skillUiAllowed(null), false);
-});
-
-test("readPublishedVersion 接受 v0.2.2-rc.N 并校验发行元数据且拒绝重定向", async () => {
-  const repo = "tom613951/dsh-purge";
-  for (const tag of ["v0.2.2-rc.3", "v1.7.11", "v0.2.2"]) {
-    const release = {
-      tag_name: tag,
-      draft: false,
-      prerelease: false,
-      html_url: `https://github.com/${repo}/releases/tag/${tag}`,
-    };
-    const res = await readPublishedVersion(async (url, init) => {
-      assert.equal(url.href, `https://api.github.com/repos/${repo}/releases/latest`);
-      assert.equal(init.redirect, "manual");
-      return Response.json(release);
-    });
-    assert.equal(res, tag.slice(1));
-  }
-
-  for (const override of [
-    { draft: true },
-    { prerelease: true },
-    { html_url: "https://example.com/release" },
-    { tag_name: "v0.2.2-beta.1" },
-    { tag_name: "main" },
-  ]) {
-    const payload = {
-      tag_name: "v0.2.2-rc.3",
-      draft: false,
-      prerelease: false,
-      html_url: `https://github.com/${repo}/releases/tag/v0.2.2-rc.3`,
-      ...override,
-    };
-    await assert.rejects(
-      readPublishedVersion(async () => Response.json(payload)),
-      /元数据不匹配/,
-    );
-  }
-
-  let calls = 0;
-  await assert.rejects(
-    readPublishedVersion(async () => {
-      calls += 1;
-      return Response.redirect("https://example.com/hijack");
-    }),
-    /redirect rejected/,
-  );
-  assert.equal(calls, 1);
-
-  const degraded = await checkUpdate({
-    listVersions: async () => {
-      throw new Error("network timeout");
-    },
-    readPublishedVersion: async () => "0.2.2-rc.3",
-  });
-  assert.equal(degraded.ok, false);
-  assert.equal(degraded.hasUpdate, null);
-  assert.equal(degraded.publishedVersion, "0.2.2-rc.3");
-  assert.match(degraded.error, /0\.2\.2-rc\.3/);
 });
 
 test("registerPromptSections 遇到损坏 tuning.json 时发出告警并只读回退，不崩溃不覆写", () => {
@@ -522,13 +402,6 @@ test("原子写入与死文件清理：状态写盘无 .tmp 残留，不再写�
     const grant = writeDrillGrant(home);
     assert.equal(grant.granted, true);
     assert.ok(fs.existsSync(drillGrantPath(home)));
-    writeOverride(home, 12, 0, "p");
-    assert.equal(readOverrides(home)["12"]["0"].pattern, "p");
-    const probe = createProbe(home);
-    assert.equal(readProbe(home)?.nonce, probe.nonce);
-    const recPath = writeRecord(home, 3080, process.pid, { url: "http://127.0.0.1:3080" });
-    assert.equal(readRecord(home, 3080)?.port, 3080);
-    assert.ok(recPath);
     assert.deepEqual(
       fs.readdirSync(path.join(home, "dsh-purge")).filter((f) => f.includes(".tmp")),
       [],

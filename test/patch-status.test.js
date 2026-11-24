@@ -85,11 +85,11 @@ test("自标记型补丁：pattern 就是本插件留下的痕迹，找不到 = 
   assert.equal(filePatchOutcome("host text", patch, ""), "skipped");
 });
 
-test("自标记型判定：普通补丁不算自标记，#80 算", () => {
+test("自标记型判定：普通补丁不算自标记，#95 算", () => {
   assert.equal(isSelfMarkedPatch({ id: 9805, replacements: [{ pattern: "const a = 1;", replace: "x" }] }), false);
-  const p80 = ALL_PATCHES.find((p) => p.id === 80);
-  assert.ok(p80, "找不到 #80");
-  assert.equal(isSelfMarkedPatch(p80), true);
+  const p95 = ALL_PATCHES.find((p) => p.id === 95);
+  assert.ok(p95, "找不到 #95");
+  assert.equal(isSelfMarkedPatch(p95), true);
 });
 
 /* ---------------------------------------------------------------------------
@@ -177,20 +177,15 @@ test("applyReplacementsToText: 没有残留 pattern 时 changed=false", () => {
   assert.equal(r.text, "hello world");
 });
 
-test("#77 锚点容错：官方在中间插一行也照样命中，且二次应用不叠加", () => {
+test("#77 压缩版精确命中与幂等收敛 (rc.5 conversation-client)", () => {
   const p77 = ALL_PATCHES.find((p) => p.id === 77);
   assert.ok(p77, "找不到 #77");
-  // 0.2.1-rc.2 起的官方原文：中间多了一行 revised.clear()
   const host =
-    "\t\t\tappend(record) {\n" +
-    "\t\t\t\tconst event = record.event;\n" +
-    "\t\t\t\tif (this.inputs.has(event.seq)) return \"none\";\n" +
-    "\t\t\t\tif (this.revised.size > 0) this.revised.clear();\n" +
-    "\t\t\t\tthis.inputs.set(event.seq, record);\n";
+    "append(record){const event=record.event;if(this.inputs.has(event.seq))return`none`;if(this.revised.size>0)this.revised.clear();this.inputs.set(event.seq,record);}";
   const once = applyReplacementsToText(host, p77, "");
-  assert.equal(once.changed, true, "rc.2 的原文应当命中");
-  assert.ok(once.text.includes("isRewindMarker(event)"), "应当注入回退判断");
-  assert.ok(once.text.includes("if (this.revised.size > 0) this.revised.clear();"), "官方那行必须原样保留");
+  assert.equal(once.changed, true, "rc.5 压缩版原文应当命中");
+  assert.ok(once.text.includes("replaceWindow"), "应当注入回退替换窗口逻辑");
+  assert.ok(once.text.includes("if(this.revised.size>0)this.revised.clear();"), "官方那句必须原样保留");
   const twice = applyReplacementsToText(once.text, p77, "");
   assert.equal(twice.text, once.text, "二次应用不得再插一遍");
 });
@@ -251,18 +246,19 @@ test("parseHostVersion: 拆出主次修订与预发布段", () => {
   assert.deepEqual(parseHostVersion("v1.2.3"), { major: 1, minor: 2, patch: 3, pre: [] });
 });
 
-test("自标记与依赖前置的补丁 (#46/#84/#88) 在 Pass 1 前不误报 drifted", () => {
-  const p46 = ALL_PATCHES.find((p) => p.id === 46);
-  const p84 = ALL_PATCHES.find((p) => p.id === 84);
-  const p88 = ALL_PATCHES.find((p) => p.id === 88);
-  assert.ok(p46 && p84 && p88, "找不到 #46/#84/#88");
+test("自标记与静默缺失补丁 (#82/#95/#96/#97) 在未命中时不误报 drifted", () => {
+  const p82 = ALL_PATCHES.find((p) => p.id === 82);
+  const p95 = ALL_PATCHES.find((p) => p.id === 95);
+  const p96 = ALL_PATCHES.find((p) => p.id === 96);
+  const p97 = ALL_PATCHES.find((p) => p.id === 97);
+  assert.ok(p82 && p95 && p96 && p97, "找不到 #82/#95/#96/#97");
 
-  assert.equal(isSelfMarkedPatch(p88), true, "#88 模式含 // [dsh-purge-87] 应识别为自标记");
-  assert.equal(p46.silentWhenMissing, true);
-  assert.equal(p84.silentWhenMissing, true);
-  assert.equal(p88.silentWhenMissing, true);
+  assert.equal(isSelfMarkedPatch(p95), true, "#95 模式含 // [dsh-purge] 应识别为自标记");
+  assert.equal(p82.silentWhenMissing, true);
+  assert.equal(p96.silentWhenMissing, true);
+  assert.equal(p97.silentWhenMissing, true);
 
-  assert.equal(filePatchOutcome("function plainHostShell() {}", p46, "main.js"), "skipped");
-  assert.equal(filePatchOutcome("process.on('exit', () => {})", p84, "host-process.js"), "skipped");
-  assert.equal(filePatchOutcome("function runLoop() {}", p88, "index.js"), "skipped");
+  assert.equal(filePatchOutcome("function plainHostShell() {}", p82, "main.js"), "skipped");
+  assert.equal(filePatchOutcome("class FakeInspector {}", p96, "index.js"), "skipped");
+  assert.equal(filePatchOutcome("class FakeClient {}", p97, "client.js"), "skipped");
 });

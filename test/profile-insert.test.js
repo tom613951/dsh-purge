@@ -394,7 +394,6 @@ test("包内 cordis.patch.yml 无废弃 redteam-* 块，且 dsh-purge 本体含�
   for (const key of [
     "enabled:",
     "autoApplyOnStart:",
-    "autoUpdateOnStart:",
     "autoRevertOnMissing:",
     "injectOnce:",
     "stripMnemon:",
@@ -407,7 +406,6 @@ test("包内 cordis.patch.yml 无废弃 redteam-* 块，且 dsh-purge 本体含�
     "continueMax:",
     "continueText:",
     "capabilityProtocol:",
-    "hooksDenyBypass:",
     "anchorMode:",
     "subagentControl:",
     "sessionMemory:",

@@ -122,7 +122,22 @@ test("#95 HOST_MAX_HTTP_HEADER_SIZE adds flag once and repairs duplicated copies
   assert.equal(repaired.text, once.text);
 });
 
-function buildSourceBufferFixture(budgetExpr, indent) {
+function buildSourceBufferFixture(budgetExpr, indent, minified = false) {
+  if (minified) {
+    return [
+      "class SourceFrameBuffer {",
+      "\tconstructor(options) { this.options = options; this.queue = []; this.state = new Map(); }",
+      "\trecord(topic, payload, monotonicMs) { return { topic, payload, monotonicMs }; }",
+      "\tstateFits() { return Buffer.byteLength(JSON.stringify([...this.state.entries()]), 'utf8') <= this.options.maxBytes; }",
+      "\tenqueue(rec) { this.queue.push(rec); }",
+      "\tsetState(topic, payload, monotonicMs) {",
+      "\t\tconst record = this.record(topic, payload, monotonicMs); const previous = this.state.get(topic); this.state.set(topic, record);",
+      "\t\tif(!this.stateFits()){if(previous===void 0)this.state.delete(topic);else this.state.set(topic,previous);throw new Error(`inspector: source state exceeds the source-frame byte limit`)}this.enqueue(record)",
+      "\t}",
+      "}",
+      `function createBuffer(bootstrap) { return new SourceFrameBuffer({ maxBytes: ${budgetExpr} - 4096 }); }`,
+    ].join("\n") + "\n";
+  }
   return [
     "class SourceFrameBuffer {",
     "\tconstructor(options) {",
@@ -160,14 +175,14 @@ function buildSourceBufferFixture(budgetExpr, indent) {
   ].join("\n") + "\n";
 }
 
-test("#96 & #97 INSPECTOR_FRAME_BUDGET_RECORD_OVERHEAD[_CLIENT] reserve 1024B and drop oversized cordis/tree cleanly", async () => {
+test("#96 & #97 INSPECTOR_FRAME_BUDGET_RECORD_OVERHEAD[_CLIENT] drop oversized cordis/tree cleanly", async () => {
   for (const spec of [
-    { id: 96, argName: "spec", expr: "spec.maxSourceFrameBytes", indent: "\t\t\t", key: "experimental-inspector", pkg: ["lib", "index.js"] },
-    { id: 97, argName: "bootstrap", expr: "bootstrap.maxFrameBytes", indent: "\t\t\t\t\t", key: "experimental-inspector-client", pkg: ["lib", "client.js"] },
+    { id: 96, argName: "spec", expr: "spec.maxSourceFrameBytes", indent: "\t\t\t", key: "experimental-inspector", pkg: ["lib", "index.js"], minified: false },
+    { id: 97, argName: "bootstrap", expr: "bootstrap.maxFrameBytes", indent: "\t\t\t\t\t", key: "experimental-inspector-client", pkg: ["lib", "client.js"], minified: true },
   ]) {
     const patch = core.ALL_PATCHES.find((p) => p.id === spec.id);
     assert.ok(patch);
-    const src = buildSourceBufferFixture(spec.expr, spec.indent);
+    const src = buildSourceBufferFixture(spec.expr, spec.indent, spec.minified);
     const res = core.applyReplacementsToText(src, patch, spec.pkg[1]);
     assert.equal(res.hitMismatch, undefined, `patch #${spec.id} must not hit-mismatch`);
     assert.equal(res.changed, true);
@@ -184,19 +199,19 @@ test("#96 & #97 INSPECTOR_FRAME_BUDGET_RECORD_OVERHEAD[_CLIENT] reserve 1024B an
       `${res.text}\nreturn createBuffer(${spec.argName});`,
     );
     const buf = createBuffer(Buffer, { maxSourceFrameBytes: 8192, maxFrameBytes: 8192 });
-    assert.equal(buf.options.maxBytes, 8192 - 4096 - 1024);
+    assert.equal(buf.options.maxBytes, 8192 - 4096);
 
     buf.setState("cordis/tree", "small", 1);
     assert.equal(buf.queue.length, 1);
 
     // Oversized cordis/tree drops silently without throwing and preserves prior state
-    assert.doesNotThrow(() => buf.setState("cordis/tree", "x".repeat(4000), 2));
+    assert.doesNotThrow(() => buf.setState("cordis/tree", "x".repeat(4500), 2));
     assert.equal(buf.queue.length, 1);
     assert.equal(buf.state.get("cordis/tree").payload, "small");
 
     // Oversized non-cordis topic still throws the budget error
     assert.throws(
-      () => buf.setState("session/state", "x".repeat(4000), 3),
+      () => buf.setState("session/state", "x".repeat(4500), 3),
       /inspector: source state exceeds the source-frame byte limit/,
     );
 
@@ -211,7 +226,7 @@ test("#96 & #97 INSPECTOR_FRAME_BUDGET_RECORD_OVERHEAD[_CLIENT] reserve 1024B an
   }
 });
 
-test("#98 ASK_USER_WAIT_CAPPED caps -1 to 300s and upgrades legacy marker", () => {
+test("#98 ASK_USER_WAIT_CAPPED caps -1 to 300s cleanly and is idempotent", () => {
   const p98 = core.ALL_PATCHES.find((p) => p.id === 98);
   assert.ok(p98);
 
@@ -227,15 +242,12 @@ test("#98 ASK_USER_WAIT_CAPPED caps -1 to 300s and upgrades legacy marker", () =
   assert.equal(evalFn((x) => x, {}, 60), 60);
   assert.equal(evalFn((x) => x, { timeout: 45 }, 60), 45);
 
-  const legacy =
-    "function run(args, defaultTimeout) {\n\t\t\tconst timeout = 1; // [dsh-purge] ask_user_question never blocks a turn\n\t\t\treturn timeout;\n}\n";
-  assert.equal(core.filePatchOutcome(legacy, p98, "index.js"), "pending");
-  const migrated = core.applyReplacementsToText(legacy, p98, "index.js");
-  assert.equal(migrated.changed, true);
-  assert.equal(core.filePatchOutcome(migrated.text, p98, "index.js"), "applied");
+  const again = core.applyReplacementsToText(applied.text, p98, "index.js");
+  assert.equal(again.changed, false);
+  assert.equal(core.filePatchOutcome(applied.text, p98, "index.js"), "applied");
 });
 
-test("#99 STEER_WAKE_LATCH latches running wakes and clears on cancel even with keepInbox", () => {
+test("#99 STEER_WAKE_LATCH latches running wakes and skips disposed aborts", () => {
   const p99 = core.ALL_PATCHES.find((p) => p.id === 99);
   assert.ok(p99);
   const src = [
@@ -262,14 +274,18 @@ test("#99 STEER_WAKE_LATCH latches running wakes and clears on cancel even with 
   const again = core.applyReplacementsToText(res.text, p99, "index.js");
   assert.equal(again.changed, false);
 
-  const Driver = new Function("abortedCancelCause", `${res.text}\nreturn Driver;`)((sig) => (sig.aborted ? { kind: "cancelled" } : null));
+  const Driver = new Function("abortedCancelCause", `${res.text}\nreturn Driver;`)((sig) => (sig.disposed ? { kind: "disposed" } : sig.aborted ? { kind: "cancelled" } : null));
   const d = new Driver();
   d.inbox = { clear() {} };
   d.phase = { kind: "running", wakeRequested: false, abort: { signal: { aborted: false }, abort() { this.signal.aborted = true; } } };
   d.wakeDriver(false);
   assert.equal(d.phase.wakeRequested, true, "running non-aborted wake must latch");
-  d.cancel("stop", { keepInbox: true });
-  assert.equal(d.phase.wakeRequested, false, "cancel must clear wakeRequested even with keepInbox=true");
+  d.phase = { kind: "running", wakeRequested: false, abort: { signal: { aborted: true, disposed: true } } };
+  d.wakeDriver(true);
+  assert.equal(d.phase.wakeRequested, false, "disposed abort must never latch wakeRequested");
+  d.phase = { kind: "running", wakeRequested: true, abort: { signal: { aborted: false }, abort() { this.signal.aborted = true; } } };
+  d.cancel("stop", { keepInbox: false });
+  assert.equal(d.phase.wakeRequested, false, "cancel with keepInbox=false clears wakeRequested");
 });
 
 test("#54 DELIVERABLE_DO_NOT silentWhenMissing yields skipped & drifted=0 in patchStatus and applyPatches", async () => {
@@ -349,21 +365,21 @@ test("patchedTargetStillPatched and refreshStaleBaksForUpgrade protect mixed/par
     // No dsh-purge string and no marker, yet vendor anchor is absent -> !hasVendorAnchor must protect bak
     assert.equal(core.patchedTargetStillPatched(connPath, fs.readFileSync(connPath), aiBase, fs.readFileSync(connBak)), true);
 
-    // Also test multi-patch file where patch A (say #35 no marker / replacement) applied without "dsh-purge" marker while patch B (#1) kept vendor anchor
-    const approvalPath = writePkgFile(aiBase, "dsh-agent-instructions", ["lib", "index.js"], "");
-    const approvalBak = `${approvalPath}.dshpurge.bak`;
-    const p1 = core.ALL_PATCHES.find((p) => p.id === 1);
-    const p2 = core.ALL_PATCHES.find((p) => p.id === 2);
-    const baseInstr = `${p1.replacements[0].pattern}\n${p2.replacements[0].pattern}\n`;
-    const mixedInstr = `${p1.replacements[0].pattern}\n${p2.replacements[0].replace}\n`;
-    fs.writeFileSync(approvalBak, baseInstr, "utf8");
-    fs.writeFileSync(approvalPath, mixedInstr, "utf8");
-    assert.equal(core.patchedTargetStillPatched(approvalPath, mixedInstr, aiBase, baseInstr), true);
+    // Also test multi-patch file where patch A (#22 no marker / replacement) applied without "dsh-purge" marker while patch B (#36) kept vendor anchor
+    const fsPath = writePkgFile(aiBase, "dsh-tool-fs", ["lib", "index.js"], "");
+    const fsBak = `${fsPath}.dshpurge.bak`;
+    const p22 = core.ALL_PATCHES.find((p) => p.id === 22);
+    const p36 = core.ALL_PATCHES.find((p) => p.id === 36);
+    const baseInstr = `${p22.replacements[0].pattern}\n${p36.replacements[0].pattern}\n`;
+    const mixedInstr = `${p22.replacements[0].replace}\n${p36.replacements[0].pattern}\n`;
+    fs.writeFileSync(fsBak, baseInstr, "utf8");
+    fs.writeFileSync(fsPath, mixedInstr, "utf8");
+    assert.equal(core.patchedTargetStillPatched(fsPath, mixedInstr, aiBase, baseInstr), true);
     const refreshedBlocked = core.refreshStaleBaksForUpgrade(aiBase);
     assert.equal(refreshedBlocked.includes(connPath), false);
-    assert.equal(refreshedBlocked.includes(approvalPath), false);
+    assert.equal(refreshedBlocked.includes(fsPath), false);
     assert.equal(fs.readFileSync(connBak, "utf8").includes("update(authority)"), true);
-    assert.equal(fs.readFileSync(approvalBak, "utf8"), baseInstr);
+    assert.equal(fs.readFileSync(fsBak, "utf8"), baseInstr);
   });
 });
 

@@ -16,7 +16,6 @@
       config:
         enabled: true
         autoApplyOnStart: false
-        autoUpdateOnStart: false
         autoRevertOnMissing: false
         injectOnce: false
         stripMnemon: true
@@ -29,7 +28,6 @@
         continueMax: 3
         continueText: "继续"
         capabilityProtocol: true
-        hooksDenyBypass: true
         anchorMode: auto
         subagentControl: true
         sessionMemory: true

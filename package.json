@@ -26,7 +26,6 @@
     "presets",
     "skills",
     "scripts/ensure-profile-bundle.mjs",
-    "scripts/redteam-setup.sh",
     "client.js",
     "cordis.patch.yml",
     "README.md",
@@ -104,9 +103,6 @@
   },
   "dshTarget": "0.2.2-rc.5",
   "dshTargets": [
-    "0.2.2-rc.5",
-    "0.2.2-rc.3",
-    "0.2.2-rc.2",
-    "0.2.2-rc.1"
+    "0.2.2-rc.5"
   ]
 }

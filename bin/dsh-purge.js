@@ -7,8 +7,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { findDesktopAppExecutable } from "../lib/desktop.js";
 import { readTuning, writeTuning, TUNING_DEFAULTS } from "../lib/tuning.js";
-import { createProbe, readProbe, clearProbe, probeMessage } from "../lib/probe.js";
-import { readOverrides, clearOverride } from "../lib/anchors.js";
 
 const args = process.argv.slice(2);
 
@@ -26,7 +24,6 @@ function printStatus(state) {
   } else {
     out.push("  插件根 / root  " + core.missingAiBaseMessage());
   }
-  out.push(`  shim 目录      ${state.shim_dir || "未定位 / not found"}`);
   out.push(`  备份 / backup  ${state.has_backup ? "有 / yes" : "无 / no"}`);
   out.push(`  注入文件       ${state.override_path}`);
   out.push(`  注入状态       ${state.override_status}`);
@@ -41,15 +38,8 @@ function printStatus(state) {
   out.push(`  拒答拦截 / retry      ${tuning.refusalRetry ? "开启 / on" : "关闭 / off"}`);
   out.push(`  组件拆解 / decompose  ${tuning.refusalDecompose !== false ? "开启 / on" : "关闭 / off"}`);
   out.push(`  多轮清洗 / scrubbing  ${tuning.refusalScrubbing !== false ? "开启 / on" : "关闭 / off"}`);
-  const probe = readProbe(state.dsh_home);
-  out.push(`  破甲探针 / probe      ${probe ? `存活 [${probe.nonce}] (剩余 ${Math.round(probe.remainingMs / 60000)}m)` : "未激活 / inactive"}`);
   if (tuning.excludePresets?.length) {
     out.push(`  排除预设 / excluded   ${tuning.excludePresets.join(", ")}`);
-  }
-  const overrides = readOverrides(state.dsh_home);
-  const overrideCount = Object.keys(overrides).length;
-  if (overrideCount) {
-    out.push(`  重锚覆盖 / reanchors  ${overrideCount} 项本地覆盖生效`);
   }
   if (state.asar_still_sealed) {
     out.push("  ⚠ app.asar      还在。补丁写在解开目录，当前进程读不到");
@@ -66,36 +56,11 @@ function printStatus(state) {
     const mark = s === "applied" ? "✓" : s === "pending" ? "✗" : s === "drifted" ? "!" : "·";
     out.push(`    ${mark} [#${String(p.id).padEnd(2)}] ${p.name.padEnd(30)} ${p.layer}/${p.layer_en} — ${s}`);
   }
-  out.push("");
-  out.push(`  shim: dsh.cmd=${state.shim_cmd}  dsh.ps1=${state.shim_ps1}  dsh=${state.shim_bin}`);
   return out.join("\n");
 }
 
 async function main() {
-  const mode = args.find((a) => ["--apply", "--revert", "--uninstall", "--status", "--edit", "--help"].includes(a));
-
-  const probeIdx = args.indexOf("--probe");
-  if (probeIdx >= 0) {
-    const home = core.findDshHome();
-    const action = (args[probeIdx + 1] || "status").toLowerCase();
-    if (action === "new" || action === "create") {
-      const p = createProbe(home);
-      console.log(`破甲探针已创建 (有效期 30 分钟): [${p.nonce}]\n\n${p.message}`);
-      return;
-    }
-    if (action === "clear") {
-      clearProbe(home);
-      console.log("已清除当前破甲探针。");
-      return;
-    }
-    const p = readProbe(home);
-    if (!p) {
-      console.log("当前无活跃探针。使用 dsh-purge --probe new 创建探针。");
-    } else {
-      console.log(`活跃探针: [${p.nonce}] (剩余 ${Math.round(p.remainingMs / 60000)} 分钟)\n\n${probeMessage(p.nonce)}`);
-    }
-    return;
-  }
+  const mode = args.find((a) => ["--apply", "--revert", "--status", "--edit", "--help"].includes(a));
 
   const scrubIdx = args.findIndex((a) => a === "--refusal-scrubbing" || a === "--scrub");
   if (scrubIdx >= 0) {
@@ -136,37 +101,6 @@ async function main() {
     writeTuning({ excludePresets: cur.filter((x) => x !== presetId) }, home);
     console.log(`预设 ${presetId} 已移出排除名单 (恢复正常注入)`);
     return;
-  }
-
-  const reanchorIdx = args.indexOf("--reanchor");
-  if (reanchorIdx >= 0) {
-    const home = core.findDshHome();
-    const sub = (args[reanchorIdx + 1] || "list").toLowerCase();
-    if (sub === "list") {
-      const ov = readOverrides(home);
-      const keys = Object.keys(ov);
-      if (!keys.length) {
-        console.log("当前无本地重锚覆盖。");
-      } else {
-        console.log("本地重锚覆盖:");
-        for (const [pid, items] of Object.entries(ov)) {
-          for (const [idx, item] of Object.entries(items)) {
-            console.log(`  [补丁 #${pid} 索引 ${idx}] 片段: ${item.pattern?.slice(0, 40)}... (时间: ${item.at})`);
-          }
-        }
-      }
-      return;
-    }
-    if (sub === "clear") {
-      const patchId = args[reanchorIdx + 2];
-      if (!patchId) {
-        console.log("[ERROR] 用法: dsh-purge --reanchor clear <patch-id> [index]");
-        process.exit(1);
-      }
-      clearOverride(home, patchId, args[reanchorIdx + 3]);
-      console.log(`已清除补丁 #${patchId} 的重锚覆盖`);
-      return;
-    }
   }
 
   const boostIdx = args.indexOf("--boost");
@@ -218,14 +152,16 @@ async function main() {
   if (mode === "--help" || args.includes("-h")) {
     console.log(`dsh-purge 用法:
   dsh-purge --status     显示状态
-  dsh-purge --apply      应用全部清洗（提示词+代码+shim+override）
+  dsh-purge --apply      应用全部清洗（提示词+代码+override）
   dsh-purge --revert     回滚还原
-  dsh-purge --uninstall  卸载插件（已应用则先还原）
   dsh-purge --edit       编辑注入文件 prompt-inject.md
   dsh-purge --boost <on|off>              开关尾部破甲强化段 (默认 on)
   dsh-purge --inject-position <pos>      注入位置 (head|tail|both, 默认 head)
   dsh-purge --refusal-retry <on|off>      开关模型拒答流式拦截与重试 (默认 on)
   dsh-purge --refusal-decompose <on|off>  开关拒答第三阶段最小组件拆解 (默认 on)
+  dsh-purge --refusal-scrubbing <on|off>  开关多轮历史拒答惯性清洗 (默认 on)
+  dsh-purge --exclude-preset <id>         将指定预设排除注入名单
+  dsh-purge --include-preset <id>         将指定预设移出排除名单
   dsh-purge --help       帮助`);
     return;
   }
@@ -279,28 +215,12 @@ async function main() {
       const m = r.status === "applied" ? "✓ 已清洗" : r.status === "already" ? "- 已是最新" : r.status === "missing_file" ? "⚠ 文件缺失" : `✗ ${r.status}`;
       console.log(`  ${m} patch #${String(r.patch_id).padEnd(2)} ${r.name}`);
     }
-    try {
-      core.repairOfficialCliAfterUnpack();
-    } catch { /* ignore */ }
     const flash = hosts[0]?.flash || core.silenceCmdFlash(state.ai_base);
-    console.log(`  cmd-flash=${flash.entry} phase-1=${flash.phase1} ok=${flash.ok}`);
+    console.log(`  cmd-flash=${flash.entry} ok=${flash.ok}`);
     if (hosts.length > 1) {
       console.log(`  多宿主 / multi-host: ${hosts.length} 份 @deepseek-ai 已清洗`);
     }
-    console.log(inject.source === "rule"
-      ? "  - 使用当前规则集，不改写提示词文件"
-      : "  - 使用已有提示词文件");
-    if (state.shim_dir) {
-      const r = await core.patchShim(state.shim_dir);
-      for (const [fname, st] of Object.entries(r)) {
-        if (st === "patched") console.log(`  ✓ shim ${fname} 注入 / injected`);
-        else if (st === "already_patched") console.log(`  - shim ${fname} 已注入 / already injected`);
-        else if (st === "missing") console.log(`  - shim ${fname} 不存在 / missing`);
-        else console.log(`  ⚠ shim ${fname}: ${st}`);
-      }
-    } else {
-      console.log("  ⚠ 未定位 shim 目录，跳过注入");
-    }
+    console.log("  - 使用已有提示词文件");
     const failed = core.summarizeApplyReport(report).failed || [];
     console.log("");
     if (failed.length > 0) {
@@ -326,37 +246,9 @@ async function main() {
       for (const [p, e] of errors) console.log(`  ⚠ 还原失败 ${p}: ${e}`);
       if (reverted.length === 0) console.log("  - 没有补丁备份可还原 / no patch backup");
     }
-    if (state.shim_dir) {
-      const r = await core.revertShim(state.shim_dir);
-      for (const [fname, st] of Object.entries(r)) {
-        if (st === "reverted" || st === "stripped_inject") console.log(`  ✓ shim ${fname}: ${st}`);
-        else console.log(`  - shim ${fname}: ${st}`);
-      }
-    }
     console.log("");
     console.log("回滚完成 / Revert done。重启 dsh 后恢复 / restart to restore.");
     console.log("注: prompt-inject.md 保留（用户文件）/ prompt-inject.md kept (user file)");
-  } else if (mode === "--uninstall") {
-    const { uninstallPurge } = await import("../lib/uninstall.js");
-    const result = await uninstallPurge();
-    if (result.applied) console.log("  已检测到补丁，已还原回原版。");
-    else console.log("  未检测到已应用补丁，仍会清除插件文件。");
-    if (result.override?.removed) console.log(`  已删除 ${result.override.path}`);
-    if (result.stripped?.length) console.log(`  已从 profile 移除: ${result.stripped.join(", ")}`);
-    for (const e of result.errors || []) console.log(`  ⚠ ${e}`);
-    if (!result.ok) {
-      console.log("  卸载中止：还原失败，插件文件未删除。");
-      process.exit(1);
-    }
-    /* 命令行卸载没有「重启后助手」这一步：插件目录不会自己消失，得在这里删。
-       （界面卸载是把这一步交给独立助手，等端口释放后再删。） */
-
-    for (const dir of result.cleanup || []) {
-      try { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 120 }); }
-      catch (e) { console.log(`  ⚠ 未能删除 ${dir}: ${e && e.message ? e.message : e}`); }
-    }
-    console.log("");
-    console.log("卸载完成。请重启 dsh。");
   } else if (mode === "--edit") {
     const r = core.editOverride(state.dsh_home);
     if (!r.ok && r.needCreate) {

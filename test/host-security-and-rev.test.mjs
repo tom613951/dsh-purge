@@ -175,11 +175,20 @@ test("installWebServer wires host allowlist across all routes and enforces 409 C
   installWebServer(ctx, { enabled: true });
 
   const findRoute = (p) => routes.find((r) => r.path === p);
-  for (const p of ["/dsh-purge/status", "/dsh-purge/apply", "/dsh-purge/revert", "/dsh-purge/rules", "/dsh-purge/skills"]) {
+  const routeMethods = [
+    ["/dsh-purge/status", "GET"],
+    ["/dsh-purge/apply", "POST"],
+    ["/dsh-purge/revert", "POST"],
+    ["/dsh-purge/tuning", "GET"],
+    ["/dsh-purge/override", "GET"],
+    ["/dsh-purge/workspace-policy", "GET"],
+    ["/dsh-purge/restart", "POST"],
+  ];
+  for (const [p, method] of routeMethods) {
     const route = findRoute(p);
     assert.ok(route, `missing route ${p}`);
     const evilRes = makeRes();
-    await route.handler(makeReq({ method: p === "/dsh-purge/status" ? "GET" : "POST", url: p, headers: { host: "evil.test:43120", origin: "https://evil.test:43120" } }), evilRes);
+    await route.handler(makeReq({ method, url: p, headers: { host: "evil.test:43120", origin: "https://evil.test:43120" } }), evilRes);
     assert.equal(evilRes.status, 403, `route ${p} must reject untrusted Host`);
   }
 
