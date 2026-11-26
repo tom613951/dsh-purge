@@ -1,7 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { isSafetyOnlySection, rewritePromptAssembly } from "../lib/identity.js";
-import { ANCHOR_TEXT, COMPACT_ANCHOR_TEXT, ANCHOR_SECTION, anchorTextFor, registerAnchor } from "../lib/anchor.js";
+import {
+  ANCHOR_TEXT,
+  COMPACT_ANCHOR_TEXT,
+  CHILD_ANCHOR_TEXT,
+  COMPACT_CHILD_ANCHOR_TEXT,
+  ANCHOR_SECTION,
+  CHILD_ANCHOR_CONTEXT,
+  anchorTextFor,
+  childAnchorTextFor,
+  registerAnchor,
+} from "../lib/anchor.js";
+import { rewriteLiveAssembly } from "../lib/index.js";
+import { writeTuning } from "../lib/tuning.js";
 
 function padSafety(body, targetLen = 460) {
   let out = body;
@@ -187,4 +202,141 @@ test("registerAnchor 支持 resolveAnchorMode 动态切换模式", () => {
   mode = "full";
   assert.equal(sec.text(), ANCHOR_TEXT);
   dispose();
+});
+
+test("childAnchorTextFor 支持 full / auto / compact / off / enabled:false", () => {
+  assert.equal(childAnchorTextFor({}), CHILD_ANCHOR_TEXT);
+  assert.equal(childAnchorTextFor({ anchorMode: "full" }), CHILD_ANCHOR_TEXT);
+  assert.equal(childAnchorTextFor({ anchorMode: "auto" }), CHILD_ANCHOR_TEXT);
+  assert.equal(childAnchorTextFor({ anchorMode: "compact" }), COMPACT_CHILD_ANCHOR_TEXT);
+  assert.ok(
+    COMPACT_CHILD_ANCHOR_TEXT.length < CHILD_ANCHOR_TEXT.length,
+    "compact child anchor strictly shorter than full child anchor",
+  );
+  assert.equal(childAnchorTextFor({ anchorMode: "off" }), "");
+  assert.equal(childAnchorTextFor({ enabled: false, anchorMode: "compact" }), "");
+});
+
+function captureAnchor(config) {
+  const specs = { section: [], context: [] };
+  const ctx = {
+    systemPrompt: {
+      section(spec) { specs.section.push(spec); return () => {}; },
+      context(spec) { specs.context.push(spec); return () => {}; },
+    },
+  };
+  const dispose = registerAnchor(ctx, config);
+  return {
+    sec: specs.section.find((s) => s.name === ANCHOR_SECTION),
+    child: specs.context.find((s) => s.name === CHILD_ANCHOR_CONTEXT),
+    dispose,
+  };
+}
+
+test("registerAnchor 子会话抑制 ANCHOR_SECTION 并在 CHILD_ANCHOR_CONTEXT 分级", () => {
+  let mode = "compact";
+  const { sec, child, dispose } = captureAnchor({ resolveAnchorMode: () => mode });
+  assert.ok(sec && child);
+  for (const header of [{ origin: "subagent" }, { delegationDepth: 1 }, { parentSession: "root-session" }]) {
+    const context = { agent: { session: { header } } };
+    assert.equal(sec.text(context), "", "子会话不应渲染尾部主锚点");
+    assert.equal(child.text(context), COMPACT_CHILD_ANCHOR_TEXT, "子会话 compact 应走精简子锚点");
+  }
+  mode = "full";
+  const subContext = { agent: { session: { header: { origin: "subagent" } } } };
+  assert.equal(sec.text(subContext), "");
+  assert.equal(child.text(subContext), CHILD_ANCHOR_TEXT);
+  const rootContext = { agent: { session: { header: { origin: "cli", id: "root" } } } };
+  assert.equal(sec.text(rootContext), ANCHOR_TEXT);
+  assert.equal(child.text(rootContext), "");
+  assert.equal(sec.text(undefined), ANCHOR_TEXT);
+  assert.equal(sec.text({}), ANCHOR_TEXT);
+  assert.equal(child.text({}), "");
+  mode = "off";
+  assert.equal(sec.text(rootContext), "");
+  assert.equal(child.text(subContext), "");
+  dispose();
+});
+
+function withTempHome(run) {
+  const prevHome = process.env.DSH_HOME;
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-purge-live-anchor-"));
+  process.env.DSH_HOME = home;
+  try {
+    return run(home);
+  } finally {
+    if (prevHome === undefined) delete process.env.DSH_HOME;
+    else process.env.DSH_HOME = prevHome;
+    try { fs.rmSync(home, { recursive: true, force: true }); } catch { /* 临时目录 */ }
+  }
+}
+
+const LIVE_CFG = { enabled: true, anchorMode: "full", capabilityProtocol: false, stripMnemon: true };
+
+test("rewriteLiveAssembly 子会话跳过 ANCHOR_SECTION 并剥离预置锚点", () => {
+  withTempHome((home) => {
+    const subContext = { agent: { session: { header: { id: "sub-1", cwd: home, origin: "subagent" } } } };
+    const subOut = rewriteLiveAssembly(LIVE_CFG, {
+      sections: [
+        { name: "harness:env", text: "Workspace ready." },
+        { name: ANCHOR_SECTION, text: ANCHOR_TEXT },
+      ],
+      tools: [],
+      contexts: [],
+    }, subContext);
+    assert.equal(
+      subOut.sections.some((s) => s.name === ANCHOR_SECTION),
+      false,
+      "子会话必须跳过主锚点并剥离预置 ANCHOR_SECTION",
+    );
+    assert.equal(subOut.sections.some((s) => s.name === "harness:env"), true);
+
+    const rootContext = { agent: { session: { header: { id: "root-1", cwd: home } } } };
+    const rootOut = rewriteLiveAssembly(LIVE_CFG, {
+      sections: [{ name: "harness:env", text: "Workspace ready." }],
+      tools: [],
+      contexts: [],
+    }, rootContext);
+    assert.equal(
+      rootOut.sections.some((s) => s.name === ANCHOR_SECTION),
+      true,
+      "主会话必须保留尾部主锚点",
+    );
+  });
+});
+
+test("rewriteLiveAssembly 浅拷贝命中 rewrittenSectionsCache 并保留 tools/contexts", () => {
+  withTempHome((home) => {
+    const context = { agent: { session: { header: { id: "root-cache", cwd: home } } } };
+    const assembled = { sections: [{ name: "harness:env", text: "Workspace ready." }], tools: [], contexts: [] };
+    const first = rewriteLiveAssembly(LIVE_CFG, assembled, context);
+
+    const copy = { ...first, tools: [{ name: "read" }] };
+    const hit = rewriteLiveAssembly(LIVE_CFG, copy, context);
+    assert.equal(hit.sections, copy.sections, "命中缓存不得重跑 rewritePromptAssembly");
+    assert.equal(hit.tools, copy.tools);
+    assert.deepEqual(hit.tools, [{ name: "read" }]);
+    assert.deepEqual(hit.contexts, []);
+
+    const replaced = { ...first, sections: first.sections.map((s) => ({ ...s })), tools: [{ name: "read" }] };
+    const miss = rewriteLiveAssembly(LIVE_CFG, replaced, context);
+    assert.notEqual(miss.sections, replaced.sections, "sections 数组被替换必须重跑");
+    assert.equal(miss.sections.some((s) => s.name === ANCHOR_SECTION), true);
+
+    const offMiss = rewriteLiveAssembly({ ...LIVE_CFG, anchorMode: "off" }, copy, context);
+    assert.notEqual(offMiss.sections, copy.sections, "anchorMode=off 必须重跑");
+    assert.equal(offMiss.sections.some((s) => s.name === ANCHOR_SECTION), false);
+
+    writeTuning({ anchorMode: "compact" }, home);
+    const compactMiss = rewriteLiveAssembly(LIVE_CFG, copy, context);
+    assert.notEqual(compactMiss.sections, copy.sections, "tuning anchorMode=compact 必须重跑");
+    assert.equal(
+      compactMiss.sections.find((s) => s.name === ANCHOR_SECTION)?.text,
+      COMPACT_ANCHOR_TEXT,
+    );
+
+    const otherContext = { agent: { session: { header: { id: "root-cache-2", cwd: home } } } };
+    const sessionMiss = rewriteLiveAssembly(LIVE_CFG, copy, otherContext);
+    assert.notEqual(sessionMiss.sections, copy.sections, "会话变化必须重跑");
+  });
 });
