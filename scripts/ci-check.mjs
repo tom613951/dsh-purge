@@ -154,12 +154,12 @@ async function main() {
 
   const pkgPath = path.join(REPO_ROOT, "package.json");
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-  if (pkg?.engines?.dsh !== ">=0.2.0-rc.1 <0.3.0-0") {
-    errors.push(`[manifest] engines.dsh expected ">=0.2.0-rc.1 <0.3.0-0", got ${JSON.stringify(pkg?.engines?.dsh)}`);
+  if (pkg?.engines?.dsh !== ">=0.2.2-rc.5 <0.3.0-0") {
+    errors.push(`[manifest] engines.dsh expected ">=0.2.2-rc.5 <0.3.0-0", got ${JSON.stringify(pkg?.engines?.dsh)}`);
   }
-  if (pkg?.peerDependencies?.["@deepseek-ai/dsh"] !== ">=0.2.0-rc.1 <0.3.0-0") {
+  if (pkg?.peerDependencies?.["@deepseek-ai/dsh"] !== ">=0.2.2-rc.5 <0.3.0-0") {
     errors.push(
-      `[manifest] peerDependencies["@deepseek-ai/dsh"] expected ">=0.2.0-rc.1 <0.3.0-0", got ${JSON.stringify(pkg?.peerDependencies?.["@deepseek-ai/dsh"])}`,
+      `[manifest] peerDependencies["@deepseek-ai/dsh"] expected ">=0.2.2-rc.5 <0.3.0-0", got ${JSON.stringify(pkg?.peerDependencies?.["@deepseek-ai/dsh"])}`,
     );
   }
   if (pkg?.peerDependenciesMeta?.["@deepseek-ai/dsh"]?.optional !== true) {

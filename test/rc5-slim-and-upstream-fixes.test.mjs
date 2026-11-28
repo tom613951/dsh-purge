@@ -9,6 +9,10 @@ import * as core from "../lib/core.js";
 import { isPermanentFailure, shouldAutoRetry } from "../lib/continue-retry.js";
 import { looksLikeRefusal, REFUSAL_PATTERNS } from "../lib/refusal-retry.js";
 import { installWebServer, resetStatusCacheForTests } from "../lib/index.js";
+import { hideConsoleEntrySource, preserveExecPromise } from "../lib/hide-console.js";
+import { foldInjectIntoPersona, rewritePromptAssembly, textCarriesInject } from "../lib/identity.js";
+import { isRewindDerivedMessage } from "../lib/rewind.js";
+import { readTuning } from "../lib/tuning.js";
 import * as revision from "../lib/revision.js";
 import { readWorkspacePolicy } from "../lib/rules.js";
 import * as redteam from "../lib/redteam/index.js";
@@ -159,6 +163,7 @@ test("live Windows DSH NEXT 0.2.2-rc.5 .dshpurge.bak dry-run audit passes all 76
       }
       for (let i = 0; i < reps.length; i += 1) {
         const singlePatch = { ...patch, replacements: [reps[i]] };
+        if (core.isSelfMarkedPatch(singlePatch)) continue;
         let matchedSomewhere = false;
         for (const fp of filesForPatch) {
           const cur = currentTexts.get(fp);
@@ -530,5 +535,119 @@ test("redteam/index.js apply() runs cleanly without undeclared globals and provi
     if (prevRt === undefined) delete process.env.REDTEAM_HOME;
     else process.env.REDTEAM_HOME = prevRt;
     fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("hide-console preserves nodejs.util.promisify.custom and injects windowsHide in both exec and execFile", async () => {
+  const customKey = Symbol.for("nodejs.util.promisify.custom");
+  const calls = [];
+  const origExec = () => {};
+  origExec[customKey] = (cmd, opts) => {
+    calls.push({ kind: "exec", cmd, opts });
+    return Promise.resolve({ stdout: "ok", stderr: "" });
+  };
+  const wrappedExec = preserveExecPromise(origExec, () => {}, false);
+  assert.equal(typeof wrappedExec[customKey], "function");
+  await wrappedExec[customKey]("echo hi");
+  assert.deepEqual(calls[0], { kind: "exec", cmd: "echo hi", opts: { windowsHide: true } });
+
+  const origExecFile = () => {};
+  origExecFile[customKey] = (file, args, opts) => {
+    calls.push({ kind: "execFile", file, args, opts });
+    return Promise.resolve({ stdout: "ok", stderr: "" });
+  };
+  const wrappedExecFile = preserveExecPromise(origExecFile, () => {}, true);
+  assert.equal(typeof wrappedExecFile[customKey], "function");
+  await wrappedExecFile[customKey]("node");
+  await wrappedExecFile[customKey]("node", ["--version"]);
+  await wrappedExecFile[customKey]("node", { env: { FOO: "1" } });
+  assert.deepEqual(calls[1], { kind: "execFile", file: "node", args: [], opts: { windowsHide: true } });
+  assert.deepEqual(calls[2], { kind: "execFile", file: "node", args: ["--version"], opts: { windowsHide: true } });
+  assert.deepEqual(calls[3], { kind: "execFile", file: "node", args: { env: { FOO: "1" }, windowsHide: true }, opts: undefined });
+
+  const entrySrc = hideConsoleEntrySource();
+  assert.match(entrySrc, /function preserveExecPromise/);
+  assert.match(entrySrc, /preserveExecPromise\(cp\.exec,/);
+  assert.match(entrySrc, /preserveExecPromise\(cp\.execFile,/);
+});
+
+test("#58 REWIND_SKIP_DERIVE migrates legacy host, filters only empty rewind markers, and syncs isRewindDerivedMessage", () => {
+  const p58 = core.ALL_PATCHES.find((p) => p.id === 58);
+  assert.ok(p58);
+
+  const unpatched = [
+    '\t\tcase "user/message": return event.data;',
+    "\t\tconst msg = this.deriveEventMessage(this.log[seq]);",
+    "\t\t\tif (msg) this.derived.push(msg);",
+  ].join("\n");
+  const rFresh = core.applyReplacementsToText(unpatched, p58, "index.js");
+  assert.equal(rFresh.changed, true);
+  assert.equal(core.filePatchOutcome(rFresh.text, p58, "index.js"), "applied");
+  assert.match(rFresh.text, /\[dsh-purge\] omit empty rewind markers from derived history/);
+  assert.equal(core.applyReplacementsToText(rFresh.text, p58, "index.js").changed, false);
+
+  const legacyPatched = [
+    '\t\tcase "user/message":\n\t\t\tif (typeof event.data?.id === "string" && event.data.id.indexOf("rewind-") === 0) return null;\n\t\t\treturn event.data; // [dsh-purge] rewind markers stay off the model transcript',
+    "\t\tconst msg = this.deriveEventMessage(this.log[seq]);",
+    "\t\t\tif (msg) this.derived.push(msg);",
+  ].join("\n");
+  assert.equal(core.filePatchOutcome(legacyPatched, p58, "index.js"), "pending");
+  const rMigrated = core.applyReplacementsToText(legacyPatched, p58, "index.js");
+  assert.equal(rMigrated.changed, true);
+  assert.equal(core.filePatchOutcome(rMigrated.text, p58, "index.js"), "applied");
+  assert.equal(rMigrated.text.includes("[dsh-purge] rewind markers stay off the model transcript"), false);
+  assert.ok(rMigrated.text.includes('\t\tcase "user/message": return event.data;'));
+
+  assert.equal(isRewindDerivedMessage({ role: "user", id: "rewind-1", content: [] }), true);
+  assert.equal(isRewindDerivedMessage({ role: "user", id: "rewind-1", content: [{ type: "text", text: "hi" }] }), false);
+  assert.equal(isRewindDerivedMessage({ role: "assistant", id: "rewind-1", content: [] }), false);
+  assert.equal(isRewindDerivedMessage({ role: "user", id: "msg-1", content: [] }), false);
+});
+
+test("identity folds into a single persona section and deduplicates CRLF/LF copies", () => {
+  const inject = "LINE ONE\nLINE TWO";
+  const folded = foldInjectIntoPersona(
+    [
+      { name: "deployment:persona-prefix", text: "", order: 0 },
+      { name: "persona-prefix", text: "You are a helpful software engineer assistant.\nCustom preset note", order: 100 },
+    ],
+    inject,
+  );
+  const dep = folded.find((s) => s.name === "deployment:persona-prefix");
+  const preset = folded.find((s) => s.name === "persona-prefix");
+  assert.equal(dep.text, "");
+  assert.equal(textCarriesInject(preset.text, inject), true);
+
+  assert.equal(textCarriesInject("LINE ONE\r\nLINE TWO\r\n", `${inject}\n`), true);
+
+  const assembled = rewritePromptAssembly(
+    {
+      sections: [
+        { name: "deployment:persona-prefix", text: "", order: 0 },
+        { name: "persona-prefix", text: "LINE ONE\r\nLINE TWO\r\n\r\nPreset rule", order: 100 },
+      ],
+    },
+    inject,
+    { injectPosition: "head", boost: false, capabilityProtocol: false, safetyFilter: false },
+  );
+  const fullRendered = assembled.sections.map((s) => s.text).join("\n\n");
+  assert.equal(fullRendered.split("LINE ONE").length - 1, 1);
+});
+
+test("readTuning tolerates UTF-8 BOM and zero-width chars while staying fail-closed on corrupt JSON", () => {
+  const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), "dsh-tuning-bom-"));
+  const dir = path.join(tmpHome, "dsh-purge");
+  const file = path.join(dir, "tuning.json");
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(file, `\uFEFF\u200B${JSON.stringify({ injectPosition: "tail", boost: false })}\n`, "utf8");
+    const ok = readTuning(tmpHome);
+    assert.equal(ok.injectPosition, "tail");
+    assert.equal(ok.boost, false);
+
+    fs.writeFileSync(file, "\uFEFF{ broken", "utf8");
+    assert.throws(() => readTuning(tmpHome), (err) => err?.code === "TUNING_UNREADABLE");
+  } finally {
+    fs.rmSync(tmpHome, { recursive: true, force: true });
   }
 });

@@ -62,10 +62,10 @@ function compareSemver(aStr, bStr) {
 }
 
 function satisfiesDshRange(version, range) {
-  if (range !== ">=0.2.0-rc.1 <0.3.0-0") {
+  if (range !== ">=0.2.2-rc.5 <0.3.0-0") {
     throw new Error(`Unexpected test range: ${range}`);
   }
-  return compareSemver(version, "0.2.0-rc.1") >= 0 && compareSemver(version, "0.3.0-0") < 0;
+  return compareSemver(version, "0.2.2-rc.5") >= 0 && compareSemver(version, "0.3.0-0") < 0;
 }
 
 function writeRawAsar(filePath, { manifestObj, payloadSizeOverride = null, data = Buffer.from("ok") }) {
@@ -257,16 +257,16 @@ test("lib/extract-asar.js: rejects tampered headerPayloadSize and __proto__ entr
 
 test("package.json declares DSH engines/peerDependencies compatibility contract", () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf8"));
-  assert.equal(pkg.engines?.dsh, ">=0.2.0-rc.1 <0.3.0-0");
-  assert.equal(pkg.peerDependencies?.["@deepseek-ai/dsh"], ">=0.2.0-rc.1 <0.3.0-0");
+  assert.equal(pkg.engines?.dsh, ">=0.2.2-rc.5 <0.3.0-0");
+  assert.equal(pkg.peerDependencies?.["@deepseek-ai/dsh"], ">=0.2.2-rc.5 <0.3.0-0");
   assert.equal(pkg.peerDependenciesMeta?.["@deepseek-ai/dsh"]?.optional, true);
   assert.equal(pkg.dshTarget, pkg.version);
 
   const range = pkg.engines.dsh;
-  for (const okVer of ["0.2.0-rc.1", "0.2.2-rc.5", "0.2.9"]) {
+  for (const okVer of ["0.2.2-rc.5", "0.2.2", "0.2.9"]) {
     assert.equal(satisfiesDshRange(okVer, range), true, `expected ${okVer} to satisfy ${range}`);
   }
-  for (const badVer of ["0.1.9", "0.3.0-alpha.1", "0.3.0"]) {
+  for (const badVer of ["0.1.9", "0.2.0-rc.1", "0.2.2-rc.4", "0.3.0-alpha.1", "0.3.0"]) {
     assert.equal(satisfiesDshRange(badVer, range), false, `expected ${badVer} to fail ${range}`);
   }
 });
